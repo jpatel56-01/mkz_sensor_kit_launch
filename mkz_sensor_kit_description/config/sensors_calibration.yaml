@@ -1,0 +1,10 @@
+base_link:
+  sensor_kit_base_link:
+    # Using lidar_to_base so the kit origin is at the Pandar64 base (Autoware tutorial style)
+    x: 0.000000
+    y: 0.000000
+    z: 0.054000
+    roll: 0.052300
+    pitch: 0.000000
+    yaw: 0.000000
+
