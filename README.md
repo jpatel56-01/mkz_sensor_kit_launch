@@ -12,3 +12,5 @@ The packages from this repository now live under the `autoware_launch/sensor_kit
 
 In the far future, the launch file structure will be updated more drastically to make them more modular and easier to use.
 But for those updates, please follow the [autoware_launch](https://github.com/autowarefoundation/autoware_launch) repository.
+
+Jagrat Patel
