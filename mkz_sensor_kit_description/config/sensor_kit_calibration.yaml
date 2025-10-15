@@ -1,5 +1,5 @@
 sensor_kit_base_link:
-  # Main LiDAR at the kit origin (because the kit origin is defined at the LiDAR base)
+  # Main LiDAR at kit origin (Autoware How-to style)
   hesai_lidar:
     x: 0.000000
     y: 0.000000
@@ -8,7 +8,7 @@ sensor_kit_base_link:
     pitch: 0.000000
     yaw: 0.000000
 
-  # NovAtel IMU relative to the LiDAR base (derived from your IMU and LiDAR base_link transforms)
+  # NovAtel IMU body frame relative to kit
   imu_link:
     x: 0.943000
     y: -1.052432
@@ -17,11 +17,11 @@ sensor_kit_base_link:
     pitch: -0.156325
     yaw: 3.120733
 
-  # GNSS: keep colocated with IMU for now (update later with antenna ARP offsets once measured)
+  # GNSS antenna ARP relative to kit (from your tape measurements)
   gnss_link:
-    x: 0.000000
-    y: 0.000000
-    z: 0.000000
+    x: 1.317650
+    y: -1.530262
+    z: -0.487220
     roll: 0.000000
     pitch: 0.000000
     yaw: 0.000000
