@@ -1,9 +1,15 @@
 <?xml version="1.0"?>
 <robot name="vehicle" xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:arg name="config_dir" default="$(find sample_sensor_kit_description)/config"/>
+  <!--
+    mkz_sensor_kit_description/urdf/sensors.xacro
+    Attaches the whole kit to base_link using config/sensors_calibration.yaml
+  -->
+
+  <!-- Load base_link → sensor_kit_base_link transform -->
+  <xacro:arg name="config_dir" default="$(find mkz_sensor_kit_description)/config"/>
   <xacro:property name="calibration" value="${xacro.load_yaml('$(arg config_dir)/sensors_calibration.yaml')}"/>
 
-  <!-- sensor kit -->
+  <!-- Bring in the kit macro and instantiate it on base_link -->
   <xacro:include filename="sensor_kit.xacro"/>
   <xacro:sensor_kit_macro
     parent="base_link"
@@ -12,19 +18,5 @@
     z="${calibration['base_link']['sensor_kit_base_link']['z']}"
     roll="${calibration['base_link']['sensor_kit_base_link']['roll']}"
     pitch="${calibration['base_link']['sensor_kit_base_link']['pitch']}"
-    yaw="${calibration['base_link']['sensor_kit_base_link']['yaw']}"
-  />
-
-  <!-- embedded sensors -->
-  <xacro:include filename="$(find velodyne_description)/urdf/VLP-16.urdf.xacro"/>
-  <xacro:VLP-16 parent="base_link" name="velodyne_rear" topic="velodyne_rear/velodyne_points" hz="10" samples="220" gpu="false">
-    <origin
-      xyz="${calibration['base_link']['velodyne_rear_base_link']['x']}
-           ${calibration['base_link']['velodyne_rear_base_link']['y']}
-           ${calibration['base_link']['velodyne_rear_base_link']['z']}"
-      rpy="${calibration['base_link']['velodyne_rear_base_link']['roll']}
-           ${calibration['base_link']['velodyne_rear_base_link']['pitch']}
-           ${calibration['base_link']['velodyne_rear_base_link']['yaw']}"
-    />
-  </xacro:VLP-16>
+    yaw="${calibration['base_link']['sensor_kit_base_link']['yaw']}" />
 </robot>

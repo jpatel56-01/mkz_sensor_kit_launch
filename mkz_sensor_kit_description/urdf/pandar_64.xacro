@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <!-- Macro to instantiate a Hesai Pandar64 LiDAR.
+       Called like:
+         <xacro:pandar64 parent="sensor_kit_base_link" name="hesai_lidar" topic="/pandar_points" hz="10" gpu="false">
+           <origin xyz="..." rpy="..."/>
+         </xacro:pandar64>
+  -->
+  <xacro:macro name="pandar64" params="parent name topic hz gpu *origin">
+    <!-- Base mount joint places _base_link using caller's <origin/> -->
+    <joint name="${name}_base_mount_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_base_link"/>
+      <xacro:insert_block name="origin"/>
+    </joint>
+
+    <!-- A simple stacked-cylinder visual to represent the sensor body -->
+    <link name="${name}_base_link">
+      <visual>
+        <geometry><cylinder length="0.030" radius="0.065"/></geometry>
+        <origin xyz="0 0 0.015" rpy="0 0 0"/>
+        <material name="dark_gray"><color rgba="0.3 0.3 0.3 1.0"/></material>
+      </visual>
+      <visual>
+        <geometry><cylinder length="0.060" radius="0.065"/></geometry>
+        <origin xyz="0 0 0.060" rpy="0 0 0"/>
+        <material name="blue"><color rgba="0.0 0.2 1.0 1.0"/></material>
+      </visual>
+      <visual>
+        <geometry><cylinder length="0.050" radius="0.065"/></geometry>
+        <origin xyz="0 0 0.115" rpy="0 0 0"/>
+        <material name="dark_gray"/>
+      </visual>
+      <visual>
+        <geometry><cylinder length="0.030" radius="0.010"/></geometry>
+        <origin xyz="0.0 0.065 0.010" rpy="1.57 0 0"/>
+        <material name="dark_gray"/>
+      </visual>
+      <inertial>
+        <mass value="0.0"/>
+        <origin xyz="0 0 0"/>
+        <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+      </inertial>
+    </link>
+
+    <!-- Fixed joint to the scanning frame.
+         The scanning frame name equals ${name}, e.g., "hesai_lidar" -->
+    <joint name="${name}_base_scan_joint" type="fixed">
+      <origin xyz="0 0 0.060" rpy="0 0 0"/>
+      <parent link="${name}_base_link"/>
+      <child link="${name}"/>
+    </joint>
+
+    <!-- The LiDAR frame used by your driver and TF -->
+    <link name="${name}">
+      <inertial>
+        <mass value="0.0"/>
+        <origin xyz="0 0 0"/>
+        <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+      </inertial>
+    </link>
+  </xacro:macro>
+</robot>
