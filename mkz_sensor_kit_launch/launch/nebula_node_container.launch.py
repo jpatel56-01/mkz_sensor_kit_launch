@@ -134,7 +134,7 @@ def launch_setup(context, *args, **kwargs):
             package="autoware_pointcloud_preprocessor",
             plugin="autoware::pointcloud_preprocessor::RingOutlierFilterComponent",
             name="ring_outlier_filter",
-            remappings=[("input","rectified/pointcloud_ex"),("output","pointcloud_before_sync")],
+            remappings=[("input","rectified/pointcloud_ex"),("output","pointcloud")],
             parameters=[ring_outlier_param, {"output_frame": LaunchConfiguration("frame_id")}],
             extra_arguments=[{"use_intra_process_comms": LaunchConfiguration("use_intra_process")}],
         )

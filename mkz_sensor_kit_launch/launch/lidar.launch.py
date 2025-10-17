@@ -32,7 +32,7 @@ def generate_launch_description():
         DeclareLaunchArgument('pointcloud_container_name', default_value='pointcloud_container'),
         DeclareLaunchArgument('use_intra_process', default_value='true'),
         DeclareLaunchArgument('use_multithread', default_value='true'),
-        DeclareLaunchArgument('use_concat_filter', default_value='false'),
+        DeclareLaunchArgument('use_concat_filter', default_value='true'),
 
         # --- Nebula + filter chain (your container) ---
         IncludeLaunchDescription(

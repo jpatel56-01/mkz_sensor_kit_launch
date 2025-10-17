@@ -39,9 +39,9 @@ def generate_launch_description():
     mkz_share = get_package_share_directory("mkz_sensor_kit_launch")
     add_arg("base_frame", "base_link")
     add_arg("use_multithread", "False")
-    add_arg("use_intra_process", "False")
+    add_arg("use_intra_process", "True")
     add_arg("pointcloud_container_name", "pointcloud_container")
-    add_arg("use_concat_filter", "False")
+    add_arg("use_concat_filter", "True")
     add_arg("concatenate_and_time_sync_node_param_path",
             os.path.join(mkz_share, "config", "concatenate_and_time_sync_node.param.yaml"))
 
