@@ -2,7 +2,7 @@ base_link:
   sensor_kit_base_link:
     x: 1.0478     # forward distance (m)
     y: 0.0000     # centered
-    z: 1.7018     # height above ground (m)
+    z: 2.028825   # height above ground (m)
     roll: 0.0000
     pitch: 0.0000
     yaw: 0.0000
