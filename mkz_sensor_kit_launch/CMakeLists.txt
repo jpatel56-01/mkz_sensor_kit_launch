@@ -9,8 +9,10 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+# Install our launch/config/data so they’re shareable to other packages
 ament_auto_package(INSTALL_TO_SHARE
   launch
-  data
   config
+  data
 )
+

@@ -3,21 +3,38 @@
 <package format="3">
   <name>mkz_sensor_kit_launch</name>
   <version>0.42.0</version>
-  <description>The mkz_sensor_kit_launch package</description>
-  <maintainer email="ryohsuke.mitsudome@tier4.jp">Ryohsuke Mitsudome</maintainer>
-  <maintainer email="yukihiro.saito@tier4.jp">Yukihiro Saito</maintainer>
-  <license>Apache License 2.0</license>
+  <description>Lincoln MKZ sensor kit: Hesai (Nebula) LiDAR + NovAtel OEM7 GNSS/IMU + Autoware preprocessing/diagnostics.</description>
 
+  <maintainer email="you@example.com">You</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Build tool -->
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
-  <exec_depend>autoware_gnss_poser</exec_depend>
-  <exec_depend>autoware_pointcloud_preprocessor</exec_depend>
-  <exec_depend>autoware_vehicle_velocity_converter</exec_depend>
-  <exec_depend>common_sensor_launch</exec_depend>
-  <exec_depend>topic_tools</exec_depend>
-  <exec_depend>ublox_gps</exec_depend>
-  <exec_depend>usb_cam</exec_depend>
+  <!-- Launch infra & helpers (from reference) -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>yaml_cpp_vendor</exec_depend>
 
+  <!-- Drivers -->
+  <exec_depend>nebula_ros</exec_depend>
+  <exec_depend>novatel_oem7_driver</exec_depend>
+
+  <!-- Autoware sensing building blocks -->
+  <exec_depend>autoware_pointcloud_preprocessor</exec_depend>
+  <exec_depend>autoware_gnss_poser</exec_depend>
+  <exec_depend>autoware_imu_corrector</exec_depend>
+  <exec_depend>autoware_vehicle_velocity_converter</exec_depend>
+
+  <!-- Diagnostics (UI) -->
+  <exec_depend>diagnostic_aggregator</exec_depend>
+  <exec_depend>autoware_system_diagnostic</exec_depend>
+
+  <!-- (Optional) utilities you may use -->
+  <exec_depend>topic_tools</exec_depend>
+
+  <!-- Tests (unchanged) -->
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
 
@@ -25,3 +42,4 @@
     <build_type>ament_cmake</build_type>
   </export>
 </package>
+
