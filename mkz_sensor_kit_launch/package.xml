@@ -29,7 +29,6 @@
 
   <!-- Diagnostics (UI) -->
   <exec_depend>diagnostic_aggregator</exec_depend>
-  <exec_depend>autoware_system_diagnostic</exec_depend>
 
   <!-- (Optional) utilities you may use -->
   <exec_depend>topic_tools</exec_depend>
