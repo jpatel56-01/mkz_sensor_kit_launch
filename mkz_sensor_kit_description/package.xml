@@ -10,6 +10,7 @@
 
   <!-- Xacro is needed at runtime to process .xacro files -->
   <exec_depend>xacro</exec_depend>
+  <exec_depend>sensor_component_description</exec_depend>
 
   <license>Apache License 2.0</license>
   <maintainer email="you@example.com">Your Name</maintainer>

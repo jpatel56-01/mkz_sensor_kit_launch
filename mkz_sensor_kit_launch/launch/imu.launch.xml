@@ -21,6 +21,13 @@
       <arg name="output_topic" value="imu_data"/>
       <arg name="param_file" value="$(var imu_corrector_param_file)"/>
     </include>
+    
+        <!-- Gyro odometer: input = corrected IMU; output = twist_with_covariance -->
+    <include file="$(find-pkg-share autoware_gyro_odometer)/launch/gyro_odometer.launch.xml">
+      <arg name="input_imu_topic" value="/sensing/imu/imu_data"/>
+      <arg name="output_twist_topic" value="/twist_estimator/twist_with_covariance"/>
+    </include>
+
 
     <!-- Gyro bias estimator (subscriber to twist; harmless to keep; toggleable) -->
     <group if="$(var launch_gyro_bias_estimator)">
