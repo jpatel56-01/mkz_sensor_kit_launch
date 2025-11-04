@@ -4,3 +4,6 @@
     use_imu: true
     use_3d_distortion_correction: false
     update_azimuth_and_distance: false
+    timestamp_mismatch_fraction_threshold: 0.1
+    processing_time_threshold_sec: 0.5
+

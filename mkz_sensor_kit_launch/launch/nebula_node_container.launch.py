@@ -3,11 +3,13 @@ from ament_index_python.packages import get_package_share_directory
 import launch
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, SetLaunchConfiguration
 from launch.conditions import IfCondition, UnlessCondition
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 from launch_ros.parameter_descriptions import ParameterFile
+from launch_ros.substitutions import FindPackageShare
 import yaml
+
 
 def get_lidar_make(sensor_name):
     if sensor_name[:6].lower() == "pandar":
@@ -17,6 +19,7 @@ def get_lidar_make(sensor_name):
     elif sensor_name.lower() in ["helios", "bpearl"]:
         return "Robosense", None
     return "unrecognized_sensor_model"
+
 
 def launch_setup(context, *args, **kwargs):
     def pdict(*keys):
@@ -32,7 +35,7 @@ def launch_setup(context, *args, **kwargs):
         with open(vehicle_mirror_param_path, "r") as f:
             mirror_params = yaml.safe_load(f).get("/**", {}).get("ros__parameters", {})
 
-    # Local (mkz) param files
+    # Local (mkz) param files for preprocessor components
     mkz_share = get_package_share_directory("mkz_sensor_kit_launch")
     distortion_param = ParameterFile(
         LaunchConfiguration("distortion_correction_node_param_path").perform(context), allow_substs=True
@@ -43,16 +46,16 @@ def launch_setup(context, *args, **kwargs):
 
     nodes = []
 
-    # Nebula RosWrapper (driver)
+    # Nebula RosWrapper (driver) — now actually loads your Hesai YAML too
     nebula_params = {
         "sensor_model": sensor_model,
         "launch_hw": LaunchConfiguration("launch_driver"),
-        # pass your YAML (from top-level arg 'nebula_config_file') into the container as 'config_file'
         "config_file": LaunchConfiguration("config_file"),
         **pdict(
-            "host_ip","sensor_ip","data_port","gnss_port","return_mode",
-            "min_range","max_range","frame_id","scan_phase","cloud_min_angle","cloud_max_angle",
-            "dual_return_distance_threshold","rotation_speed","packet_mtu_size","setup_sensor","udp_only"
+            "host_ip", "sensor_ip", "data_port", "gnss_port", "return_mode",
+            "min_range", "max_range", "multicast_ip", "frame_id", "scan_phase",
+            "cloud_min_angle", "cloud_max_angle", "dual_return_distance_threshold",
+            "rotation_speed", "packet_mtu_size", "setup_sensor", "udp_only"
         ),
     }
 
@@ -61,9 +64,13 @@ def launch_setup(context, *args, **kwargs):
             package="nebula_ros",
             plugin=sensor_make + "RosWrapper",
             name=sensor_make.lower() + "_ros_wrapper_node",
-            parameters=[nebula_params],
-            # IMPORTANT: Hesai -> Autoware canonical
-            remappings=[("pandar_points", "pointcloud_raw_ex")],  # was velodyne_points in stock
+            parameters=[
+                nebula_params,
+                # IMPORTANT: load Pandar64.param.yaml so typed params like cut_angle are initialized
+                ParameterFile(LaunchConfiguration("config_file"), allow_substs=True)
+            ],
+            # Hesai -> Autoware canonical
+            remappings=[("pandar_points", "pointcloud_raw_ex")],
             extra_arguments=[{"use_intra_process_comms": LaunchConfiguration("use_intra_process")}],
         )
     )
@@ -82,8 +89,8 @@ def launch_setup(context, *args, **kwargs):
             package="autoware_pointcloud_preprocessor",
             plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
             name="crop_box_filter_self",
-            remappings=[("input","pointcloud_raw_ex"),("output","self_cropped/pointcloud_ex")],
-            parameters=[crop_self_params],
+            remappings=[("input", "pointcloud_raw_ex"), ("output", "self_cropped/pointcloud_ex")],
+            parameters=[crop_self_params, {"processing_time_threshold_sec": 0.5}],
             extra_arguments=[{"use_intra_process_comms": LaunchConfiguration("use_intra_process")}],
         )
     )
@@ -105,13 +112,13 @@ def launch_setup(context, *args, **kwargs):
             package="autoware_pointcloud_preprocessor",
             plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
             name="crop_box_filter_mirror",
-            remappings=[("input","self_cropped/pointcloud_ex"),("output","mirror_cropped/pointcloud_ex")],
-            parameters=[crop_mirror_params],
+            remappings=[("input", "self_cropped/pointcloud_ex"), ("output", "mirror_cropped/pointcloud_ex")],
+            parameters=[crop_mirror_params, {"processing_time_threshold_sec": 0.5}],
             extra_arguments=[{"use_intra_process_comms": LaunchConfiguration("use_intra_process")}],
         )
     )
 
-    # Distortion corrector (needs /sensing/vehicle_velocity_converter/twist_with_covariance and IMU)
+    # Distortion corrector (needs twist + IMU)
     nodes.append(
         ComposableNode(
             package="autoware_pointcloud_preprocessor",
@@ -123,19 +130,20 @@ def launch_setup(context, *args, **kwargs):
                 ("~/input/pointcloud", "mirror_cropped/pointcloud_ex"),
                 ("~/output/pointcloud", "rectified/pointcloud_ex"),
             ],
-            parameters=[distortion_param],
+            parameters=[distortion_param, {"processing_time_threshold_sec": 0.5}],
             extra_arguments=[{"use_intra_process_comms": LaunchConfiguration("use_intra_process")}],
         )
     )
 
-    # Ring outlier (finalizes per-lidar chain as pointcloud_before_sync)
+    # Ring outlier filter
     nodes.append(
         ComposableNode(
             package="autoware_pointcloud_preprocessor",
             plugin="autoware::pointcloud_preprocessor::RingOutlierFilterComponent",
             name="ring_outlier_filter",
-            remappings=[("input","rectified/pointcloud_ex"),("output","pointcloud")],
-            parameters=[ring_outlier_param, {"output_frame": LaunchConfiguration("frame_id")}],
+            remappings=[("input", "rectified/pointcloud_ex"), ("output", "pointcloud")],
+            parameters=[ring_outlier_param, {"output_frame": LaunchConfiguration("frame_id"),
+                                             "processing_time_threshold_sec": 0.5}],
             extra_arguments=[{"use_intra_process_comms": LaunchConfiguration("use_intra_process")}],
         )
     )
@@ -150,23 +158,29 @@ def launch_setup(context, *args, **kwargs):
     )
     return [container]
 
+
 def generate_launch_description():
     launch_arguments = []
+
     def add_arg(name, default=None, desc=None):
         launch_arguments.append(DeclareLaunchArgument(name, default_value=default, description=desc))
 
-    # Args (kept superset compatible with your older file)
+    # Arguments
     add_arg("sensor_model")
-    add_arg("config_file", "", "path to Hesai Nebula YAML (you pass nebula_config_file above)")
+    add_arg("config_file", "", "path to Hesai Nebula YAML (driver-only Pandar64.param.yaml)")
     add_arg("launch_driver", "True")
     add_arg("setup_sensor", "True")
     add_arg("sensor_ip", "192.168.1.201")
     add_arg("host_ip", "255.255.255.255")
+    add_arg("multicast_ip", "", "Multicast IP (empty if not used)")
     add_arg("scan_phase", "0.0")
     add_arg("base_frame", "base_link")
-    add_arg("min_range", "0.3"); add_arg("max_range", "300.0")
-    add_arg("cloud_min_angle", "0"); add_arg("cloud_max_angle", "360")
-    add_arg("data_port", "2368"); add_arg("gnss_port", "2380")
+    add_arg("min_range", "0.3")
+    add_arg("max_range", "300.0")
+    add_arg("cloud_min_angle", "0")
+    add_arg("cloud_max_angle", "360")
+    add_arg("data_port", "2368")
+    add_arg("gnss_port", "2380")
     add_arg("packet_mtu_size", "1500")
     add_arg("rotation_speed", "600")
     add_arg("dual_return_distance_threshold", "0.1")
@@ -175,16 +189,27 @@ def generate_launch_description():
     add_arg("output_frame", LaunchConfiguration("base_frame"))
     add_arg("use_multithread", "False")
     add_arg("use_intra_process", "False")
-    add_arg("pointcloud_container_name", "pointcloud_container")  # unified name
+    add_arg("pointcloud_container_name", "pointcloud_container")
     add_arg("vehicle_mirror_param_file", "")
-    add_arg("distortion_correction_node_param_path",
-            PathJoinSubstitution([FindPackageShare('mkz_sensor_kit_launch'),'config','distortion_corrector_node.param.yaml']))
-    add_arg("ring_outlier_filter_node_param_path",
-            PathJoinSubstitution([FindPackageShare('mkz_sensor_kit_launch'),'config','ring_outlier_filter_node.param.yaml']))
+    add_arg(
+        "distortion_correction_node_param_path",
+        PathJoinSubstitution([FindPackageShare('mkz_sensor_kit_launch'), 'config', 'distortion_corrector_node.param.yaml'])
+    )
+    add_arg(
+        "ring_outlier_filter_node_param_path",
+        PathJoinSubstitution([FindPackageShare('mkz_sensor_kit_launch'), 'config', 'ring_outlier_filter_node.param.yaml'])
+    )
     add_arg("udp_only", "False")
+    add_arg("return_mode", "Strongest", "Hesai return mode: Strongest|LastReturn|DualReturn")
 
-    set_ce = SetLaunchConfiguration("container_executable","component_container", condition=UnlessCondition(LaunchConfiguration("use_multithread")))
-    set_cem = SetLaunchConfiguration("container_executable","component_container_mt", condition=IfCondition(LaunchConfiguration("use_multithread")))
+    set_ce = SetLaunchConfiguration(
+        "container_executable", "component_container",
+        condition=UnlessCondition(LaunchConfiguration("use_multithread"))
+    )
+    set_cem = SetLaunchConfiguration(
+        "container_executable", "component_container_mt",
+        condition=IfCondition(LaunchConfiguration("use_multithread"))
+    )
 
     return launch.LaunchDescription(launch_arguments + [set_ce, set_cem, OpaqueFunction(function=launch_setup)])
 

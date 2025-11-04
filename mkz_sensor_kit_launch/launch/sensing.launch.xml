@@ -3,48 +3,36 @@
   <arg name="launch_driver" default="true" description="launch NovAtel driver from GNSS include"/>
   <arg name="vehicle_id" default="$(env VEHICLE_ID default)"/>
 
-  <!-- Optional args you may want to expose -->
+  <!-- Optional args -->
   <arg name="pointcloud_container_name" default="pointcloud_container"/>
   <arg name="vehicle_mirror_param_file" default="$(find-pkg-share mkz_sensor_kit_launch)/config/vehicle_mirror.param.yaml"/>
 
-  <!-- ===================== LiDAR (Hesai + preprocessor) ===================== -->
-  <!-- Uses your mkz lidar.launch.py which includes nebula_node_container and the
-       concatenator; defaults already set inside the file. -->
+  
+  <!-- Velocity converter param -->
+  <arg name="velocity_converter_param_file"
+       default="$(find-pkg-share autoware_vehicle_velocity_converter)/config/vehicle_velocity_converter.param.yaml"/>
+
+  <!-- LiDAR (Hesai + preprocessor) -->
   <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/lidar.launch.py">
     <arg name="pointcloud_container_name" value="$(var pointcloud_container_name)"/>
     <arg name="vehicle_mirror_param_file" value="$(var vehicle_mirror_param_file)"/>
   </include>
 
-  <!-- ========================= IMU (processing only) ======================== -->
-  <!-- Do NOT start the NovAtel driver here. This runs IMU corrector (+ optional
-       gyro bias estimator) on the NovAtel topics. -->
+  <!-- IMU (processing only; do not start NovAtel driver here) -->
   <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/imu.launch.xml">
-    <arg name="launch_driver" value="false"/>
-    <!-- (optional) You can disable gyro bias if desired:
-         <arg name="launch_gyro_bias_estimator" value="false"/> -->
+    <arg name="launch_driver" value="true"/>
   </include>
 
-  <!-- ================= GNSS (starts NovAtel driver ONCE) ==================== -->
-  <!-- This include starts the NovAtel driver and runs gnss_poser. -->
+  <!-- GNSS (starts NovAtel driver ONCE) -->
   <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/gnss.launch.xml">
-    <arg name="launch_driver" value="$(var launch_driver)"/>
+    <arg name="launch_driver" value="true"/>
   </include>
 
-  <!-- ============ Vehicle velocity converter (needed by IMU/LiDAR) ========== -->
+  <!-- Vehicle velocity converter -->
   <include file="$(find-pkg-share autoware_vehicle_velocity_converter)/launch/vehicle_velocity_converter.launch.xml">
-    <!-- If your vehicle interface publishes somewhere else, change this: -->
     <arg name="input_vehicle_velocity_topic" value="/vehicle/status/velocity_status"/>
     <arg name="output_twist_with_covariance" value="/sensing/vehicle_velocity_converter/twist_with_covariance"/>
+    <arg name="config_file" value="$(var velocity_converter_param_file)"/>
   </include>
 </launch>
-
-
-
-
-
-
-
-
-
-
 
