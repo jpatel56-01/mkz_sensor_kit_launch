@@ -7,16 +7,16 @@
 
   <!-- Load base_link → sensor_kit_base_link transform -->
   <xacro:arg name="config_dir" default="$(find mkz_sensor_kit_description)/config"/>
-  <xacro:property name="calibration" value="${xacro.load_yaml('$(arg config_dir)/sensors_calibration.yaml')}"/>
+  <xacro:property name="sensors_calib" value="${xacro.load_yaml('$(arg config_dir)/sensors_calibration.yaml')}"/>
 
   <!-- Bring in the kit macro and instantiate it on base_link -->
   <xacro:include filename="sensor_kit.xacro"/>
   <xacro:sensor_kit_macro
     parent="base_link"
-    x="${calibration['base_link']['sensor_kit_base_link']['x']}"
-    y="${calibration['base_link']['sensor_kit_base_link']['y']}"
-    z="${calibration['base_link']['sensor_kit_base_link']['z']}"
-    roll="${calibration['base_link']['sensor_kit_base_link']['roll']}"
-    pitch="${calibration['base_link']['sensor_kit_base_link']['pitch']}"
-    yaw="${calibration['base_link']['sensor_kit_base_link']['yaw']}" />
+    x="${sensors_calib['base_link']['sensor_kit_base_link']['x']}"
+    y="${sensors_calib['base_link']['sensor_kit_base_link']['y']}"
+    z="${sensors_calib['base_link']['sensor_kit_base_link']['z']}"
+    roll="${sensors_calib['base_link']['sensor_kit_base_link']['roll']}"
+    pitch="${sensors_calib['base_link']['sensor_kit_base_link']['pitch']}"
+    yaw="${sensors_calib['base_link']['sensor_kit_base_link']['yaw']}" />
 </robot>

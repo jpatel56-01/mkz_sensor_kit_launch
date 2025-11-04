@@ -13,7 +13,7 @@
   <xacro:arg name="config_dir" default="$(find mkz_sensor_kit_description)/config"/>
 
   <!-- Load kit-relative calibration -->
-  <xacro:property name="calibration" value="${xacro.load_yaml('$(arg config_dir)/sensor_kit_calibration.yaml')}"/>
+  <xacro:property name="kit_calib" value="${xacro.load_yaml('$(arg config_dir)/sensor_kit_calibration.yaml')}"/>
 
   <!-- Include your sensor macros -->
   <xacro:include filename="$(find mkz_sensor_kit_description)/urdf/pandar_64.xacro"/>
@@ -45,12 +45,12 @@
     <xacro:pandar64 parent="${sensor_kit_base_link}" name="hesai_lidar"
                     topic="/pandar_points" hz="10" gpu="$(arg gpu)">
       <origin
-        xyz="${calibration['sensor_kit_base_link']['hesai_lidar']['x']}
-             ${calibration['sensor_kit_base_link']['hesai_lidar']['y']}
-             ${calibration['sensor_kit_base_link']['hesai_lidar']['z']}"
-        rpy="${calibration['sensor_kit_base_link']['hesai_lidar']['roll']}
-             ${calibration['sensor_kit_base_link']['hesai_lidar']['pitch']}
-             ${calibration['sensor_kit_base_link']['hesai_lidar']['yaw']}" />
+        xyz="${kit_calib['sensor_kit_base_link']['hesai_lidar']['x']}
+             ${kit_calib['sensor_kit_base_link']['hesai_lidar']['y']}
+             ${kit_calib['sensor_kit_base_link']['hesai_lidar']['z']}"
+        rpy="${kit_calib['sensor_kit_base_link']['hesai_lidar']['roll']}
+             ${kit_calib['sensor_kit_base_link']['hesai_lidar']['pitch']}
+             ${kit_calib['sensor_kit_base_link']['hesai_lidar']['yaw']}" />
     </xacro:pandar64>
 
     <!-- IMU: your macro signature requires explicit numeric params -->
@@ -59,23 +59,23 @@
       name="imu"
       parent="${sensor_kit_base_link}"
       namespace=""
-      x="${calibration['sensor_kit_base_link']['imu_link']['x']}"
-      y="${calibration['sensor_kit_base_link']['imu_link']['y']}"
-      z="${calibration['sensor_kit_base_link']['imu_link']['z']}"
-      roll="${calibration['sensor_kit_base_link']['imu_link']['roll']}"
-      pitch="${calibration['sensor_kit_base_link']['imu_link']['pitch']}"
-      yaw="${calibration['sensor_kit_base_link']['imu_link']['yaw']}"
+      x="${kit_calib['sensor_kit_base_link']['imu_link']['x']}"
+      y="${kit_calib['sensor_kit_base_link']['imu_link']['y']}"
+      z="${kit_calib['sensor_kit_base_link']['imu_link']['z']}"
+      roll="${kit_calib['sensor_kit_base_link']['imu_link']['roll']}"
+      pitch="${kit_calib['sensor_kit_base_link']['imu_link']['pitch']}"
+      yaw="${kit_calib['sensor_kit_base_link']['imu_link']['yaw']}"
       fps="100"/>
 
     <!-- GNSS antenna frame (ARP) – frame only -->
     <xacro:frame_stub
       name="gnss_link"
       parent="${sensor_kit_base_link}"
-      x="${calibration['sensor_kit_base_link']['gnss_link']['x']}"
-      y="${calibration['sensor_kit_base_link']['gnss_link']['y']}"
-      z="${calibration['sensor_kit_base_link']['gnss_link']['z']}"
-      roll="${calibration['sensor_kit_base_link']['gnss_link']['roll']}"
-      pitch="${calibration['sensor_kit_base_link']['gnss_link']['pitch']}"
-      yaw="${calibration['sensor_kit_base_link']['gnss_link']['yaw']}"/>
+      x="${kit_calib['sensor_kit_base_link']['gnss_link']['x']}"
+      y="${kit_calib['sensor_kit_base_link']['gnss_link']['y']}"
+      z="${kit_calib['sensor_kit_base_link']['gnss_link']['z']}"
+      roll="${kit_calib['sensor_kit_base_link']['gnss_link']['roll']}"
+      pitch="${kit_calib['sensor_kit_base_link']['gnss_link']['pitch']}"
+      yaw="${kit_calib['sensor_kit_base_link']['gnss_link']['yaw']}"/>
   </xacro:macro>
 </robot>
