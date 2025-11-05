@@ -11,22 +11,67 @@ from launch_ros.substitutions import FindPackageShare
 import yaml
 
 
-def get_lidar_make(sensor_name):
-    if sensor_name[:6].lower() == "pandar":
-        return "Hesai", ".csv"
-    elif sensor_name[:3].lower() in ["hdl", "vlp", "vls"]:
-        return "Velodyne", ".yaml"
-    elif sensor_name.lower() in ["helios", "bpearl"]:
-        return "Robosense", None
-    return "unrecognized_sensor_model"
+# --- Helpers -----------------------------------------------------------------
+
+def get_lidar_make(sensor_name: str):
+    """Return (make, file_ext) for a given sensor model name.
+
+    Always returns a 2‑tuple. Be permissive for custom bundles.
+    """
+    if not sensor_name:
+        raise RuntimeError("sensor_model is empty; pass a valid model string")
+
+    m = str(sensor_name).lower().strip()
+
+    # Treat all MKZ bundles as Hesai/Pandar by default
+    if m in {"mkz_sensor_kit", "mkz-sensor-kit", "mkz_sensor", "mkz"}:
+        return ("Hesai", ".csv")
+
+    # Common vendor heuristics
+    if m.startswith("pandar") or "hesai" in m:
+        return ("Hesai", ".csv")        # Nebula uses CSV device table
+    if m.startswith(("hdl", "vlp", "vls")) or "velodyne" in m:
+        return ("Velodyne", ".yaml")
+    if m in ("helios", "bpearl") or "robosense" in m:
+        return ("Robosense", None)
+
+    # Fallback: default to Hesai (your platform uses Pandar64)
+    return ("Hesai", ".csv")
+
+    m = str(sensor_name).lower()
+    # Treat your custom bundle id as Hesai (Pandar64)
+    if m == "mkz_sensor_kit":
+        return ("Hesai", ".csv")
+
+    if m.startswith("pandar") or "hesai" in m:
+        return ("Hesai", ".csv")        # Nebula uses CSV device table
+    if m.startswith(("hdl", "vlp", "vls")) or "velodyne" in m:
+        return ("Velodyne", ".yaml")
+    if m in ("helios", "bpearl") or "robosense" in m:
+        return ("Robosense", None)
+
+    raise RuntimeError(f"Unsupported sensor_model '{sensor_name}' — add a mapping in get_lidar_make().")
+
+    m = str(sensor_name).lower()
+    if m.startswith("pandar") or "hesai" in m:
+        return ("Hesai", ".csv")        # Nebula uses CSV device table
+    if m.startswith(("hdl", "vlp", "vls")) or "velodyne" in m:
+        return ("Velodyne", ".yaml")
+    if m in ("helios", "bpearl") or "robosense" in m:
+        return ("Robosense", None)
+
+    raise RuntimeError(f"Unsupported sensor_model '{sensor_name}' — add a mapping in get_lidar_make().")
 
 
 def launch_setup(context, *args, **kwargs):
     def pdict(*keys):
         return {k: LaunchConfiguration(k) for k in keys}
 
-    sensor_model = LaunchConfiguration("sensor_model").perform(context)
-    sensor_make, sensor_ext = get_lidar_make(sensor_model)
+    # Resolve substitutions to plain strings for use in ComposableNode
+    sensor_model_str = LaunchConfiguration("sensor_model").perform(context)
+    sensor_launch_pkg_str = LaunchConfiguration("sensor_launch_pkg").perform(context)
+
+    sensor_make, sensor_ext = get_lidar_make(sensor_model_str)
 
     # Vehicle mirror params are optional; if unset, skip cropbox mirror shaping
     vehicle_mirror_param_path = LaunchConfiguration("vehicle_mirror_param_file").perform(context)
@@ -46,9 +91,9 @@ def launch_setup(context, *args, **kwargs):
 
     nodes = []
 
-    # Nebula RosWrapper (driver) — now actually loads your Hesai YAML too
+    # Nebula RosWrapper (driver) — loads Hesai YAML so typed params like cut_angle are initialized
     nebula_params = {
-        "sensor_model": sensor_model,
+        "sensor_model": sensor_model_str,
         "launch_hw": LaunchConfiguration("launch_driver"),
         "config_file": LaunchConfiguration("config_file"),
         **pdict(
@@ -61,13 +106,13 @@ def launch_setup(context, *args, **kwargs):
 
     nodes.append(
         ComposableNode(
-            package="nebula_ros",
-            plugin=sensor_make + "RosWrapper",
+            package=sensor_launch_pkg_str,  # e.g., 'nebula_ros'
+            plugin=sensor_make + "RosWrapper",  # e.g., 'HesaiRosWrapper'
             name=sensor_make.lower() + "_ros_wrapper_node",
             parameters=[
                 nebula_params,
-                # IMPORTANT: load Pandar64.param.yaml so typed params like cut_angle are initialized
-                ParameterFile(LaunchConfiguration("config_file"), allow_substs=True)
+                # IMPORTANT: also load the device/driver YAML
+                ParameterFile(LaunchConfiguration("config_file"), allow_substs=True),
             ],
             # Hesai -> Autoware canonical
             remappings=[("pandar_points", "pointcloud_raw_ex")],
@@ -159,6 +204,8 @@ def launch_setup(context, *args, **kwargs):
     return [container]
 
 
+# --- Entry -------------------------------------------------------------------
+
 def generate_launch_description():
     launch_arguments = []
 
@@ -167,7 +214,8 @@ def generate_launch_description():
 
     # Arguments
     add_arg("sensor_model")
-    add_arg("config_file", "", "path to Hesai Nebula YAML (driver-only Pandar64.param.yaml)")
+    add_arg("sensor_launch_pkg", "nebula_ros", "Package that hosts the sensor driver (e.g., nebula_ros)")
+    add_arg("config_file", "", "Path to Hesai Nebula YAML (e.g., Pandar64.param.yaml)")
     add_arg("launch_driver", "True")
     add_arg("setup_sensor", "True")
     add_arg("sensor_ip", "192.168.1.201")
