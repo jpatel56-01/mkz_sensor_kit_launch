@@ -4,7 +4,7 @@
   <arg name="vehicle_id" default="$(env VEHICLE_ID default)"/>
 
   <!-- Optional args -->
-  <arg name="pointcloud_container_name" default="pointcloud_container"/>
+  <arg name="pointcloud_container_name" default="mkz_pointcloud_container"/>
   <arg name="vehicle_mirror_param_file" default="$(find-pkg-share mkz_sensor_kit_launch)/config/vehicle_mirror.param.yaml"/>
 
   

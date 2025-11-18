@@ -1,263 +1,118 @@
-import os
-from ament_index_python.packages import get_package_share_directory
-import launch
-from launch.actions import DeclareLaunchArgument, OpaqueFunction, SetLaunchConfiguration
-from launch.conditions import IfCondition, UnlessCondition
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
-from launch_ros.actions import ComposableNodeContainer
+# mkz_sensor_kit_launch/launch/nebula_node_container.launch.py
+#
+# Load the Hesai (Nebula) driver INTO the pointcloud container created by
+# lidar.launch.py. The container FQN is computed from:
+#   container_namespace + "/" + pointcloud_container_name
+#
+# Publishes (after remap) to: /sensing/lidar/top/pointcloud_raw_ex
+
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import LoadComposableNodes
 from launch_ros.descriptions import ComposableNode
 from launch_ros.parameter_descriptions import ParameterFile
-from launch_ros.substitutions import FindPackageShare
-import yaml
 
 
-# --- Helpers -----------------------------------------------------------------
+def _load_into_existing_container(context):
+    # Resolve container name + namespace and build FQN
+    container_name = LaunchConfiguration("pointcloud_container_name").perform(context)
+    container_ns = LaunchConfiguration("container_namespace").perform(context)
+    if container_ns.endswith("/"):
+        container_fqn = f"{container_ns}{container_name}"
+    else:
+        container_fqn = f"{container_ns}/{container_name}"
 
-def get_lidar_make(sensor_name: str):
-    """Return (make, file_ext) for a given sensor model name.
+    use_ipc = LaunchConfiguration("use_intra_process").perform(context).lower() == "true"
 
-    Always returns a 2‑tuple. Be permissive for custom bundles.
-    """
-    if not sensor_name:
-        raise RuntimeError("sensor_model is empty; pass a valid model string")
+    # Nebula YAML (contains most strongly-typed params)
+    param_file = ParameterFile(LaunchConfiguration("config_file"), allow_substs=True)
 
-    m = str(sensor_name).lower().strip()
+    # Optional/overridable params
+    sensor_model = LaunchConfiguration("sensor_model")
+    host_ip = LaunchConfiguration("host_ip")
+    sensor_ip = LaunchConfiguration("sensor_ip")
+    frame_id = LaunchConfiguration("frame_id")
+    data_port = LaunchConfiguration("data_port")
+    gnss_port = LaunchConfiguration("gnss_port")
+    return_mode = LaunchConfiguration("return_mode")
+    rotation_rpm = LaunchConfiguration("rotation_speed_rpm")
+    mtu = LaunchConfiguration("packet_mtu_size")
+    rcvbuf = LaunchConfiguration("udp_socket_receive_buffer_size_bytes")
+    udp_only = LaunchConfiguration("udp_only")
 
-    # Treat all MKZ bundles as Hesai/Pandar by default
-    if m in {"mkz_sensor_kit", "mkz-sensor-kit", "mkz_sensor", "mkz"}:
-        return ("Hesai", ".csv")
-
-    # Common vendor heuristics
-    if m.startswith("pandar") or "hesai" in m:
-        return ("Hesai", ".csv")        # Nebula uses CSV device table
-    if m.startswith(("hdl", "vlp", "vls")) or "velodyne" in m:
-        return ("Velodyne", ".yaml")
-    if m in ("helios", "bpearl") or "robosense" in m:
-        return ("Robosense", None)
-
-    # Fallback: default to Hesai (your platform uses Pandar64)
-    return ("Hesai", ".csv")
-
-    m = str(sensor_name).lower()
-    # Treat your custom bundle id as Hesai (Pandar64)
-    if m == "mkz_sensor_kit":
-        return ("Hesai", ".csv")
-
-    if m.startswith("pandar") or "hesai" in m:
-        return ("Hesai", ".csv")        # Nebula uses CSV device table
-    if m.startswith(("hdl", "vlp", "vls")) or "velodyne" in m:
-        return ("Velodyne", ".yaml")
-    if m in ("helios", "bpearl") or "robosense" in m:
-        return ("Robosense", None)
-
-    raise RuntimeError(f"Unsupported sensor_model '{sensor_name}' — add a mapping in get_lidar_make().")
-
-    m = str(sensor_name).lower()
-    if m.startswith("pandar") or "hesai" in m:
-        return ("Hesai", ".csv")        # Nebula uses CSV device table
-    if m.startswith(("hdl", "vlp", "vls")) or "velodyne" in m:
-        return ("Velodyne", ".yaml")
-    if m in ("helios", "bpearl") or "robosense" in m:
-        return ("Robosense", None)
-
-    raise RuntimeError(f"Unsupported sensor_model '{sensor_name}' — add a mapping in get_lidar_make().")
-
-
-def launch_setup(context, *args, **kwargs):
-    def pdict(*keys):
-        return {k: LaunchConfiguration(k) for k in keys}
-
-    # Resolve substitutions to plain strings for use in ComposableNode
-    sensor_model_str = LaunchConfiguration("sensor_model").perform(context)
-    sensor_launch_pkg_str = LaunchConfiguration("sensor_launch_pkg").perform(context)
-
-    sensor_make, sensor_ext = get_lidar_make(sensor_model_str)
-
-    # Vehicle mirror params are optional; if unset, skip cropbox mirror shaping
-    vehicle_mirror_param_path = LaunchConfiguration("vehicle_mirror_param_file").perform(context)
-    mirror_params = {}
-    if vehicle_mirror_param_path:
-        with open(vehicle_mirror_param_path, "r") as f:
-            mirror_params = yaml.safe_load(f).get("/**", {}).get("ros__parameters", {})
-
-    # Local (mkz) param files for preprocessor components
-    mkz_share = get_package_share_directory("mkz_sensor_kit_launch")
-    distortion_param = ParameterFile(
-        LaunchConfiguration("distortion_correction_node_param_path").perform(context), allow_substs=True
-    )
-    ring_outlier_param = ParameterFile(
-        LaunchConfiguration("ring_outlier_filter_node_param_path").perform(context), allow_substs=True
+    driver = ComposableNode(
+        package="nebula_ros",
+        plugin="HesaiRosWrapper",
+        name="hesai_ros_wrapper_node",
+        namespace="/sensing/lidar/top",
+        # Use ABSOLUTE remaps so they apply inside a namespaced composable
+        remappings=[
+            ("/sensing/lidar/top/pandar_points", "/sensing/lidar/top/pointcloud_raw_ex"),
+            ("/sensing/lidar/top/pointcloud", "/sensing/lidar/top/pointcloud_raw_ex"),
+        ],
+        parameters=[
+            param_file,
+            {"sensor_model": sensor_model},
+            {"host_ip": host_ip},
+            {"sensor_ip": sensor_ip},
+            {"frame_id": frame_id},
+            {"data_port": data_port},
+            {"gnss_port": gnss_port},
+            {"return_mode": return_mode},
+            {"rotation_speed": rotation_rpm},
+            {"packet_mtu_size": mtu},
+            {"udp_socket_receive_buffer_size_bytes": rcvbuf},
+            {"udp_only": udp_only},
+        ],
+        extra_arguments=[{"use_intra_process_comms": use_ipc}],
     )
 
-    nodes = []
-
-    # Nebula RosWrapper (driver) — loads Hesai YAML so typed params like cut_angle are initialized
-    nebula_params = {
-        "sensor_model": sensor_model_str,
-        "launch_hw": LaunchConfiguration("launch_driver"),
-        "config_file": LaunchConfiguration("config_file"),
-        **pdict(
-            "host_ip", "sensor_ip", "data_port", "gnss_port", "return_mode",
-            "min_range", "max_range", "multicast_ip", "frame_id", "scan_phase",
-            "cloud_min_angle", "cloud_max_angle", "dual_return_distance_threshold",
-            "rotation_speed", "packet_mtu_size", "setup_sensor", "udp_only"
-        ),
-    }
-
-    nodes.append(
-        ComposableNode(
-            package=sensor_launch_pkg_str,  # e.g., 'nebula_ros'
-            plugin=sensor_make + "RosWrapper",  # e.g., 'HesaiRosWrapper'
-            name=sensor_make.lower() + "_ros_wrapper_node",
-            parameters=[
-                nebula_params,
-                # IMPORTANT: also load the device/driver YAML
-                ParameterFile(LaunchConfiguration("config_file"), allow_substs=True),
-            ],
-            # Hesai -> Autoware canonical
-            remappings=[("pandar_points", "pointcloud_raw_ex")],
-            extra_arguments=[{"use_intra_process_comms": LaunchConfiguration("use_intra_process")}],
+    return [
+        LoadComposableNodes(
+            target_container=container_fqn,
+            composable_node_descriptions=[driver],
         )
-    )
+    ]
 
-    # CropBox (self vehicle body)
-    crop_self_params = {
-        "input_frame": LaunchConfiguration("input_frame"),
-        "output_frame": LaunchConfiguration("output_frame"),
-        "negative": True,
-        "min_x": -1000.0, "max_x": 1000.0,
-        "min_y": -1000.0, "max_y": 1000.0,
-        "min_z": -1000.0, "max_z": 1000.0,
-    }
-    nodes.append(
-        ComposableNode(
-            package="autoware_pointcloud_preprocessor",
-            plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
-            name="crop_box_filter_self",
-            remappings=[("input", "pointcloud_raw_ex"), ("output", "self_cropped/pointcloud_ex")],
-            parameters=[crop_self_params, {"processing_time_threshold_sec": 0.5}],
-            extra_arguments=[{"use_intra_process_comms": LaunchConfiguration("use_intra_process")}],
-        )
-    )
-
-    # CropBox (mirror region), falls back to passthrough bounds if no mirror params are set
-    crop_mirror_params = {
-        "input_frame": LaunchConfiguration("input_frame"),
-        "output_frame": LaunchConfiguration("output_frame"),
-        "negative": True,
-        "min_x": mirror_params.get("min_longitudinal_offset", -1000.0),
-        "max_x": mirror_params.get("max_longitudinal_offset", 1000.0),
-        "min_y": mirror_params.get("min_lateral_offset", -1000.0),
-        "max_y": mirror_params.get("max_lateral_offset", 1000.0),
-        "min_z": mirror_params.get("min_height_offset", -100.0),
-        "max_z": mirror_params.get("max_height_offset", 100.0),
-    }
-    nodes.append(
-        ComposableNode(
-            package="autoware_pointcloud_preprocessor",
-            plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
-            name="crop_box_filter_mirror",
-            remappings=[("input", "self_cropped/pointcloud_ex"), ("output", "mirror_cropped/pointcloud_ex")],
-            parameters=[crop_mirror_params, {"processing_time_threshold_sec": 0.5}],
-            extra_arguments=[{"use_intra_process_comms": LaunchConfiguration("use_intra_process")}],
-        )
-    )
-
-    # Distortion corrector (needs twist + IMU)
-    nodes.append(
-        ComposableNode(
-            package="autoware_pointcloud_preprocessor",
-            plugin="autoware::pointcloud_preprocessor::DistortionCorrectorComponent",
-            name="distortion_corrector_node",
-            remappings=[
-                ("~/input/twist", "/sensing/vehicle_velocity_converter/twist_with_covariance"),
-                ("~/input/imu", "/sensing/imu/imu_data"),
-                ("~/input/pointcloud", "mirror_cropped/pointcloud_ex"),
-                ("~/output/pointcloud", "rectified/pointcloud_ex"),
-            ],
-            parameters=[distortion_param, {"processing_time_threshold_sec": 0.5}],
-            extra_arguments=[{"use_intra_process_comms": LaunchConfiguration("use_intra_process")}],
-        )
-    )
-
-    # Ring outlier filter
-    nodes.append(
-        ComposableNode(
-            package="autoware_pointcloud_preprocessor",
-            plugin="autoware::pointcloud_preprocessor::RingOutlierFilterComponent",
-            name="ring_outlier_filter",
-            remappings=[("input", "rectified/pointcloud_ex"), ("output", "pointcloud")],
-            parameters=[ring_outlier_param, {"output_frame": LaunchConfiguration("frame_id"),
-                                             "processing_time_threshold_sec": 0.5}],
-            extra_arguments=[{"use_intra_process_comms": LaunchConfiguration("use_intra_process")}],
-        )
-    )
-
-    container = ComposableNodeContainer(
-        name=LaunchConfiguration("pointcloud_container_name"),
-        namespace="pointcloud_preprocessor",
-        package="rclcpp_components",
-        executable=LaunchConfiguration("container_executable"),
-        composable_node_descriptions=nodes,
-        output="both",
-    )
-    return [container]
-
-
-# --- Entry -------------------------------------------------------------------
 
 def generate_launch_description():
-    launch_arguments = []
-
-    def add_arg(name, default=None, desc=None):
-        launch_arguments.append(DeclareLaunchArgument(name, default_value=default, description=desc))
-
-    # Arguments
-    add_arg("sensor_model")
-    add_arg("sensor_launch_pkg", "nebula_ros", "Package that hosts the sensor driver (e.g., nebula_ros)")
-    add_arg("config_file", "", "Path to Hesai Nebula YAML (e.g., Pandar64.param.yaml)")
-    add_arg("launch_driver", "True")
-    add_arg("setup_sensor", "True")
-    add_arg("sensor_ip", "192.168.1.201")
-    add_arg("host_ip", "255.255.255.255")
-    add_arg("multicast_ip", "", "Multicast IP (empty if not used)")
-    add_arg("scan_phase", "0.0")
-    add_arg("base_frame", "base_link")
-    add_arg("min_range", "0.3")
-    add_arg("max_range", "300.0")
-    add_arg("cloud_min_angle", "0")
-    add_arg("cloud_max_angle", "360")
-    add_arg("data_port", "2368")
-    add_arg("gnss_port", "2380")
-    add_arg("packet_mtu_size", "1500")
-    add_arg("rotation_speed", "600")
-    add_arg("dual_return_distance_threshold", "0.1")
-    add_arg("frame_id", "hesai_lidar")
-    add_arg("input_frame", LaunchConfiguration("base_frame"))
-    add_arg("output_frame", LaunchConfiguration("base_frame"))
-    add_arg("use_multithread", "False")
-    add_arg("use_intra_process", "False")
-    add_arg("pointcloud_container_name", "pointcloud_container")
-    add_arg("vehicle_mirror_param_file", "")
-    add_arg(
-        "distortion_correction_node_param_path",
-        PathJoinSubstitution([FindPackageShare('mkz_sensor_kit_launch'), 'config', 'distortion_corrector_node.param.yaml'])
+    return LaunchDescription(
+        [
+            # Container identity (comes from lidar.launch.py)
+            DeclareLaunchArgument(
+                "pointcloud_container_name",
+                default_value="mkz_pointcloud_container",
+                description="Name of the pointcloud container node",
+            ),
+            DeclareLaunchArgument(
+                "container_namespace",
+                default_value="/sensing",
+                description="Namespace of the pointcloud container node",
+            ),
+            # Nebula YAML (single source of truth)
+            DeclareLaunchArgument(
+                "config_file",
+                default_value="/home/skylar/nebula_ws/src/nebula/nebula_ros/config/lidar/hesai/Pandar64.param.yaml",
+                description="Nebula driver params YAML",
+            ),
+            # Required/commonly changed params
+            DeclareLaunchArgument("sensor_model", default_value="Pandar64"),
+            DeclareLaunchArgument("host_ip", default_value="192.168.3.100"),
+            DeclareLaunchArgument("sensor_ip", default_value="192.168.3.104"),
+            DeclareLaunchArgument("frame_id", default_value="hesai_lidar"),
+            DeclareLaunchArgument("data_port", default_value="2368"),
+            DeclareLaunchArgument("gnss_port", default_value="10110"),
+            DeclareLaunchArgument("return_mode", default_value="Strongest"),
+            DeclareLaunchArgument("rotation_speed_rpm", default_value="600"),
+            DeclareLaunchArgument("packet_mtu_size", default_value="1500"),
+            DeclareLaunchArgument(
+                "udp_socket_receive_buffer_size_bytes", default_value="5400000"
+            ),
+            DeclareLaunchArgument("udp_only", default_value="true"),
+            # IPC on for composables
+            DeclareLaunchArgument("use_intra_process", default_value="True"),
+            OpaqueFunction(function=_load_into_existing_container),
+        ]
     )
-    add_arg(
-        "ring_outlier_filter_node_param_path",
-        PathJoinSubstitution([FindPackageShare('mkz_sensor_kit_launch'), 'config', 'ring_outlier_filter_node.param.yaml'])
-    )
-    add_arg("udp_only", "False")
-    add_arg("return_mode", "Strongest", "Hesai return mode: Strongest|LastReturn|DualReturn")
-
-    set_ce = SetLaunchConfiguration(
-        "container_executable", "component_container",
-        condition=UnlessCondition(LaunchConfiguration("use_multithread"))
-    )
-    set_cem = SetLaunchConfiguration(
-        "container_executable", "component_container_mt",
-        condition=IfCondition(LaunchConfiguration("use_multithread"))
-    )
-
-    return launch.LaunchDescription(launch_arguments + [set_ce, set_cem, OpaqueFunction(function=launch_setup)])
 
