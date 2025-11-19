@@ -20,7 +20,7 @@
     # Previously multiple: right/top/left
     # We now feed only the single preprocessed cloud from nebula_node_container
     input_topics: [
-      "/sensing/lidar/top/pointcloud"
+      "/sensing/pointcloud_preprocessor/rectified/pointcloud_ex"
     ]
 
     # --- Output ---
