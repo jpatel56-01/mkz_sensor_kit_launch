@@ -4,17 +4,17 @@
 # The container FQN is computed from:
 #   container_namespace + "/" + pointcloud_container_name
 #
-# Default target container: /sensing/lidar/mkz_pointcloud_container
+# Default target container: /sensing/mkz_pointcloud_container
 #
 # Simplified LiDAR pipeline (single LiDAR, no self/mirror crops):
 #   pointcloud_raw_ex  -->  rectified/pointcloud_ex  -->  pointcloud
 #                                                       ↘  concatenated/pointcloud
 #
-# Global topics (with container namespace /sensing/lidar):
-#   /sensing/lidar/pointcloud_raw_ex
-#   /sensing/lidar/rectified/pointcloud_ex
-#   /sensing/lidar/pointcloud
-#   /sensing/lidar/concatenated/pointcloud
+# Global topics (with container namespace /sensing):
+#   /sensing/pointcloud_raw_ex
+#   /sensing/rectified/pointcloud_ex
+#   /sensing/pointcloud
+#   /sensing/concatenated/pointcloud
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
@@ -84,8 +84,8 @@ def _build_nodes(context):
     )
 
     # 3) "Fake concat" passthrough so you have BOTH topics:
-    #    - /sensing/lidar/pointcloud
-    #    - /sensing/lidar/concatenated/pointcloud  (identical cloud)
+    #    - /sensing/pointcloud
+    #    - /sensing/concatenated/pointcloud  (identical cloud)
     #
     # We use a CropBoxFilterComponent with negative=False and huge bounds so it
     # simply republishes the same cloud under another topic name.
@@ -155,7 +155,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "container_namespace",
-                default_value="/sensing/lidar",
+                default_value="/sensing",
                 description="Namespace of the pointcloud container node.",
             ),
             # IPC toggle (recommended True for component containers)

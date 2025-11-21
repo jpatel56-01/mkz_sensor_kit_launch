@@ -1,7 +1,7 @@
 # mkz_sensor_kit_launch/launch/lidar.launch.py
 #
 # Top-level LiDAR launch for the MKZ sensor kit.
-# - Creates ONE pointcloud container under /sensing/lidar
+# - Creates ONE pointcloud container under /sensing
 # - Loads the Nebula Hesai driver into that container
 # - Loads the pointcloud preprocessor nodes into the same container
 
@@ -20,7 +20,7 @@ def generate_launch_description():
     pointcloud_container_name = DeclareLaunchArgument(
         "pointcloud_container_name",
         default_value="mkz_pointcloud_container",
-        description="Name of the ONE pointcloud container created under /sensing/lidar",
+        description="Name of the ONE pointcloud container created under /sensing",
     )
     use_multithread = DeclareLaunchArgument(
         "use_multithread",
@@ -94,10 +94,10 @@ def generate_launch_description():
         description="(Unused) Enable concatenate/time-sync node",
     )
 
-    # 1) Create the pointcloud container under /sensing/lidar
+    # 1) Create the pointcloud container under /sensing
     container = ComposableNodeContainer(
         name=LaunchConfiguration("pointcloud_container_name"),
-        namespace="/sensing/lidar",
+        namespace="/sensing",
         package="rclcpp_components",
         executable="component_container_mt",  # multithreaded
         composable_node_descriptions=[],
@@ -112,7 +112,7 @@ def generate_launch_description():
         ),
         launch_arguments={
             "pointcloud_container_name": LaunchConfiguration("pointcloud_container_name"),
-            "container_namespace": "/sensing/lidar",
+            "container_namespace": "/sensing",
             "use_intra_process": LaunchConfiguration("use_intra_process"),
             "config_file": LaunchConfiguration("config_file"),
             "sensor_model": "Pandar64",
@@ -136,7 +136,7 @@ def generate_launch_description():
         ),
         launch_arguments={
             "pointcloud_container_name": LaunchConfiguration("pointcloud_container_name"),
-            "container_namespace": "/sensing/lidar",
+            "container_namespace": "/sensing",
             "use_intra_process": LaunchConfiguration("use_intra_process"),
             "use_concat_filter": LaunchConfiguration("use_concat_filter"),
             "concatenate_and_time_sync_node_param_path": LaunchConfiguration(

@@ -5,7 +5,7 @@
 #   container_namespace + "/" + pointcloud_container_name
 #
 # Publishes (after remap) to: <container_ns>/pointcloud_raw_ex
-# e.g. /sensing/lidar/pointcloud_raw_ex
+# e.g. /sensing/pointcloud_raw_ex
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
@@ -44,7 +44,7 @@ def _load_into_existing_container(context):
         package="nebula_ros",
         plugin="HesaiRosWrapper",
         name="hesai_ros_wrapper_node",
-        # Topics are relative to the container namespace: /sensing/lidar/...
+        # No explicit namespace here; topics are relative to the container namespace
         remappings=[
             ("pandar_points", "pointcloud_raw_ex"),
         ],
@@ -85,7 +85,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "container_namespace",
-                default_value="/sensing/lidar",
+                default_value="/sensing",
                 description="Namespace of the pointcloud container node",
             ),
             DeclareLaunchArgument(
