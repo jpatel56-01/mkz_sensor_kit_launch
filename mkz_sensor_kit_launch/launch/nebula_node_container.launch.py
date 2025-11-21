@@ -5,14 +5,15 @@
 #   container_namespace + "/" + pointcloud_container_name
 #
 # Publishes (after remap) to: <container_ns>/pointcloud_raw_ex
-# e.g. /sensing/pointcloud_raw_ex
+# e.g. /sensing/lidar/pointcloud_raw_ex
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import LoadComposableNodes
 from launch_ros.descriptions import ComposableNode
 from launch_ros.parameter_descriptions import ParameterFile
+from launch_ros.substitutions import FindPackageShare
 
 
 def _load_into_existing_container(context):
@@ -76,6 +77,8 @@ def _load_into_existing_container(context):
 
 
 def generate_launch_description():
+    pkg = FindPackageShare("mkz_sensor_kit_launch")
+
     return LaunchDescription(
         [
             # Container identity (comes from lidar.launch.py)
@@ -86,13 +89,15 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "container_namespace",
-                default_value="/sensing",
+                default_value="/sensing/lidar",
                 description="Namespace of the pointcloud container node",
             ),
-            # Nebula YAML (single source of truth)
+            # Nebula YAML (single source of truth, now in mkz_sensor_kit_launch/config)
             DeclareLaunchArgument(
                 "config_file",
-                default_value="/home/mkz3/nebula_ws/src/nebula/nebula_ros/config/lidar/hesai/Pandar64.param.yaml",
+                default_value=PathJoinSubstitution(
+                    [pkg, "config", "Pandar64.param.yaml"]
+                ),
                 description="Nebula driver params YAML",
             ),
             # Required/commonly changed params
@@ -114,5 +119,4 @@ def generate_launch_description():
             OpaqueFunction(function=_load_into_existing_container),
         ]
     )
-
 

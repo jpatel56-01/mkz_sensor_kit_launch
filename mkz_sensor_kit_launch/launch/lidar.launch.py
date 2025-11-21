@@ -1,7 +1,7 @@
 # mkz_sensor_kit_launch/launch/lidar.launch.py
 #
 # Top-level LiDAR launch for the MKZ sensor kit.
-# - Creates ONE pointcloud container under /sensing
+# - Creates ONE pointcloud container under /sensing/lidar
 # - Loads the Nebula Hesai driver into that container
 # - Loads the pointcloud preprocessor nodes into the same container
 
@@ -20,7 +20,7 @@ def generate_launch_description():
     pointcloud_container_name = DeclareLaunchArgument(
         "pointcloud_container_name",
         default_value="mkz_pointcloud_container",
-        description="Name of the ONE pointcloud container created under /sensing",
+        description="Name of the ONE pointcloud container created under /sensing/lidar",
     )
     use_multithread = DeclareLaunchArgument(
         "use_multithread",
@@ -41,7 +41,9 @@ def generate_launch_description():
     )
     config_file = DeclareLaunchArgument(
         "config_file",
-        default_value="/home/mkz3/nebula_ws/src/nebula/nebula_ros/config/lidar/hesai/Pandar64.param.yaml",
+        default_value=PathJoinSubstitution(
+            [pkg, "config", "Pandar64.param.yaml"]
+        ),
         description="Nebula Hesai YAML (single source of truth for driver params)",
     )
 
@@ -57,10 +59,12 @@ def generate_launch_description():
         description="Output frame for filters",
     )
 
-    # Preprocessor parameter files
+    # Preprocessor parameter files (all under mkz_sensor_kit_launch/config)
     vehicle_mirror_param_file = DeclareLaunchArgument(
         "vehicle_mirror_param_file",
-        default_value="",
+        default_value=PathJoinSubstitution(
+            [pkg, "config", "vehicle_mirror.param.yaml"]
+        ),
         description="YAML with mirror crop bounds; leave blank to disable",
     )
     distortion_correction_node_param_path = DeclareLaunchArgument(
@@ -90,10 +94,10 @@ def generate_launch_description():
         description="Enable concatenate/time-sync node",
     )
 
-    # 1) Create the pointcloud container under /sensing
+    # 1) Create the pointcloud container under /sensing/lidar
     container = ComposableNodeContainer(
         name=LaunchConfiguration("pointcloud_container_name"),
-        namespace="/sensing",
+        namespace="/sensing/lidar",
         package="rclcpp_components",
         executable="component_container_mt",  # multithreaded
         composable_node_descriptions=[],
@@ -101,14 +105,14 @@ def generate_launch_description():
         arguments=["--ros-args"],
     )
 
-    # 2) Load Hesai driver into that container
-    include_driver_and_filters = IncludeLaunchDescription(
+    # 2) Load Hesai (Nebula) driver into that container
+    include_driver = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([pkg, "launch", "nebula_node_container.launch.py"])
         ),
         launch_arguments={
             "pointcloud_container_name": LaunchConfiguration("pointcloud_container_name"),
-            "container_namespace": "/sensing",
+            "container_namespace": "/sensing/lidar",
             "use_intra_process": LaunchConfiguration("use_intra_process"),
             "config_file": LaunchConfiguration("config_file"),
             # extra args are passed through for future use / consistency
@@ -126,14 +130,14 @@ def generate_launch_description():
         }.items(),
     )
 
-    # 3) Load preprocessor nodes into the same container
+    # 3) Load preprocessor nodes into the SAME container
     include_preproc_loader = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([pkg, "launch", "pointcloud_preprocessor.launch.py"])
         ),
         launch_arguments={
             "pointcloud_container_name": LaunchConfiguration("pointcloud_container_name"),
-            "container_namespace": "/sensing",
+            "container_namespace": "/sensing/lidar",
             "use_intra_process": LaunchConfiguration("use_intra_process"),
             "use_concat_filter": LaunchConfiguration("use_concat_filter"),
             "concatenate_and_time_sync_node_param_path": LaunchConfiguration(
@@ -166,9 +170,8 @@ def generate_launch_description():
             concatenate_and_time_sync_node_param_path,
             use_concat_filter,
             container,
-            include_driver_and_filters,
+            include_driver,
             include_preproc_loader,
         ]
     )
-
 

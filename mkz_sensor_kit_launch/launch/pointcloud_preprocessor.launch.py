@@ -4,7 +4,7 @@
 # The container FQN is computed from:
 #   container_namespace + "/" + pointcloud_container_name
 #
-# Default target container: /sensing/mkz_pointcloud_container
+# Default target container: /sensing/lidar/mkz_pointcloud_container
 #
 # Topic flow inside the container namespace (single LiDAR):
 #   pandar_points              -> pointcloud_raw_ex          (from driver)
@@ -16,7 +16,7 @@
 # If Autoware nodes expect /sensing/lidar/concatenated/pointcloud,
 # you can use *subscriber-side* remap in those nodes:
 #   <remap from="/sensing/lidar/concatenated/pointcloud"
-#          to="/sensing/pointcloud"/>
+#          to="/sensing/lidar/pointcloud"/>
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
@@ -82,8 +82,7 @@ def _build_nodes(context):
         "input_frame": input_frame,
         "output_frame": output_frame,
         "negative": False,
-        # Typically tightened to vehicle body; using wide defaults here,
-        # or replace with your old fixed values if you had them.
+        # Placeholder wide bounds; adjust to your MKZ body if needed
         "min_x": -100.0,
         "max_x": 100.0,
         "min_y": -100.0,
@@ -169,7 +168,7 @@ def _build_nodes(context):
                 package="autoware_pointcloud_preprocessor",
                 plugin="autoware::pointcloud_preprocessor::PointCloudConcatenateDataSynchronizerComponent",
                 name="concatenate_and_time_sync_node",
-                # Stays relative; inside container ns, this becomes /sensing/concatenated/pointcloud
+                # Inside container ns, this becomes /sensing/lidar/concatenated/pointcloud
                 remappings=[
                     ("input", "pointcloud"),
                     ("output", "concatenated/pointcloud"),
@@ -217,7 +216,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "container_namespace",
-                default_value="/sensing",
+                default_value="/sensing/lidar",
                 description="Namespace of the pointcloud container node.",
             ),
             # IPC toggle (recommended True for component containers)
@@ -277,5 +276,4 @@ def generate_launch_description():
             OpaqueFunction(function=_launch_setup),
         ]
     )
-
 
