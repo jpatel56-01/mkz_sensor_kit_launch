@@ -17,7 +17,6 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def _load_into_existing_container(context):
-    # Resolve container name + namespace and build FQN
     container_name = LaunchConfiguration("pointcloud_container_name").perform(context)
     container_ns = LaunchConfiguration("container_namespace").perform(context)
     if container_ns.endswith("/"):
@@ -27,10 +26,8 @@ def _load_into_existing_container(context):
 
     use_ipc = LaunchConfiguration("use_intra_process").perform(context).lower() == "true"
 
-    # Nebula YAML (contains most strongly-typed params)
     param_file = ParameterFile(LaunchConfiguration("config_file"), allow_substs=True)
 
-    # Optional/overridable params
     sensor_model = LaunchConfiguration("sensor_model")
     host_ip = LaunchConfiguration("host_ip")
     sensor_ip = LaunchConfiguration("sensor_ip")
@@ -47,7 +44,7 @@ def _load_into_existing_container(context):
         package="nebula_ros",
         plugin="HesaiRosWrapper",
         name="hesai_ros_wrapper_node",
-        # No explicit namespace here; topics are relative to the container namespace
+        # Topics are relative to the container namespace: /sensing/lidar/...
         remappings=[
             ("pandar_points", "pointcloud_raw_ex"),
         ],
@@ -81,7 +78,6 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            # Container identity (comes from lidar.launch.py)
             DeclareLaunchArgument(
                 "pointcloud_container_name",
                 default_value="mkz_pointcloud_container",
@@ -92,7 +88,6 @@ def generate_launch_description():
                 default_value="/sensing/lidar",
                 description="Namespace of the pointcloud container node",
             ),
-            # Nebula YAML (single source of truth, now in mkz_sensor_kit_launch/config)
             DeclareLaunchArgument(
                 "config_file",
                 default_value=PathJoinSubstitution(
@@ -100,7 +95,6 @@ def generate_launch_description():
                 ),
                 description="Nebula driver params YAML",
             ),
-            # Required/commonly changed params
             DeclareLaunchArgument("sensor_model", default_value="Pandar64"),
             DeclareLaunchArgument("host_ip", default_value="192.168.3.100"),
             DeclareLaunchArgument("sensor_ip", default_value="192.168.3.104"),
@@ -114,7 +108,6 @@ def generate_launch_description():
                 "udp_socket_receive_buffer_size_bytes", default_value="5400000"
             ),
             DeclareLaunchArgument("udp_only", default_value="true"),
-            # IPC on for composables
             DeclareLaunchArgument("use_intra_process", default_value="True"),
             OpaqueFunction(function=_load_into_existing_container),
         ]

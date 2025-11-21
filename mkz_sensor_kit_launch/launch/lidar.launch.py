@@ -47,16 +47,16 @@ def generate_launch_description():
         description="Nebula Hesai YAML (single source of truth for driver params)",
     )
 
-    # Frames
+    # Frames (kept for compatibility / passthrough filter)
     input_frame = DeclareLaunchArgument(
         "input_frame",
         default_value="base_link",
-        description="Input frame for filters",
+        description="Input frame.",
     )
     output_frame = DeclareLaunchArgument(
         "output_frame",
         default_value="base_link",
-        description="Output frame for filters",
+        description="Output frame.",
     )
 
     # Preprocessor parameter files (all under mkz_sensor_kit_launch/config)
@@ -65,7 +65,7 @@ def generate_launch_description():
         default_value=PathJoinSubstitution(
             [pkg, "config", "vehicle_mirror.param.yaml"]
         ),
-        description="YAML with mirror crop bounds; leave blank to disable",
+        description="(Unused) YAML with mirror crop bounds; left for compatibility",
     )
     distortion_correction_node_param_path = DeclareLaunchArgument(
         "distortion_correction_node_param_path",
@@ -86,12 +86,12 @@ def generate_launch_description():
         default_value=PathJoinSubstitution(
             [pkg, "config", "concatenate_and_time_sync_node.param.yaml"]
         ),
-        description="Concatenate/time-sync params",
+        description="(Unused) Concatenate/time-sync params",
     )
     use_concat_filter = DeclareLaunchArgument(
         "use_concat_filter",
-        default_value="False",  # default off for single-LiDAR setup
-        description="Enable concatenate/time-sync node",
+        default_value="False",  # keep False; real concat filter not used
+        description="(Unused) Enable concatenate/time-sync node",
     )
 
     # 1) Create the pointcloud container under /sensing/lidar
@@ -115,7 +115,6 @@ def generate_launch_description():
             "container_namespace": "/sensing/lidar",
             "use_intra_process": LaunchConfiguration("use_intra_process"),
             "config_file": LaunchConfiguration("config_file"),
-            # extra args are passed through for future use / consistency
             "sensor_model": "Pandar64",
             "host_ip": "192.168.3.100",
             "sensor_ip": "192.168.3.104",

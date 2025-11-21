@@ -6,17 +6,15 @@
 #
 # Default target container: /sensing/lidar/mkz_pointcloud_container
 #
-# Topic flow inside the container namespace (single LiDAR):
-#   pandar_points              -> pointcloud_raw_ex          (from driver)
-#   pointcloud_raw_ex          -> self_cropped/pointcloud_ex
-#   self_cropped/pointcloud_ex -> mirror_cropped/pointcloud_ex
-#   mirror_cropped/pointcloud_ex -> rectified/pointcloud_ex
-#   rectified/pointcloud_ex    -> pointcloud   (final filtered cloud)
+# Simplified LiDAR pipeline (single LiDAR, no self/mirror crops):
+#   pointcloud_raw_ex  -->  rectified/pointcloud_ex  -->  pointcloud
+#                                                       ↘  concatenated/pointcloud
 #
-# If Autoware nodes expect /sensing/lidar/concatenated/pointcloud,
-# you can use *subscriber-side* remap in those nodes:
-#   <remap from="/sensing/lidar/concatenated/pointcloud"
-#          to="/sensing/lidar/pointcloud"/>
+# Global topics (with container namespace /sensing/lidar):
+#   /sensing/lidar/pointcloud_raw_ex
+#   /sensing/lidar/rectified/pointcloud_ex
+#   /sensing/lidar/pointcloud
+#   /sensing/lidar/concatenated/pointcloud
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
@@ -26,48 +24,15 @@ from launch_ros.descriptions import ComposableNode
 from launch_ros.parameter_descriptions import ParameterFile
 from launch_ros.substitutions import FindPackageShare
 
-import os
-import yaml
-
 
 def _build_nodes(context):
     use_intra_process = (
         LaunchConfiguration("use_intra_process").perform(context).lower() == "true"
     )
-    use_concat_filter = (
-        LaunchConfiguration("use_concat_filter").perform(context).lower() == "true"
-    )
+    # Kept for compatibility but NOT used (we no longer spawn the real concat filter)
+    _ = LaunchConfiguration("use_concat_filter").perform(context)
 
-    input_frame = LaunchConfiguration("input_frame").perform(context)
-    output_frame = LaunchConfiguration("output_frame").perform(context)
-
-    # --- Mirror param YAML (optional) ---
-    mirror_yaml_path = LaunchConfiguration("vehicle_mirror_param_file").perform(context)
-    mirror_params_raw = {}
-    if mirror_yaml_path and os.path.exists(mirror_yaml_path):
-        try:
-            with open(mirror_yaml_path, "r") as f:
-                mirror_params_raw = yaml.safe_load(f) or {}
-            if "ros__parameters" in mirror_params_raw:
-                mirror_params_raw = mirror_params_raw["ros__parameters"]
-        except Exception:
-            mirror_params_raw = {}
-
-    # Fallback to passthrough if nothing is set in YAML
-    mirror_params = {
-        "min_longitudinal_offset": mirror_params_raw.get(
-            "min_longitudinal_offset", -1000.0
-        ),
-        "max_longitudinal_offset": mirror_params_raw.get(
-            "max_longitudinal_offset", 1000.0
-        ),
-        "min_lateral_offset": mirror_params_raw.get("min_lateral_offset", -1000.0),
-        "max_lateral_offset": mirror_params_raw.get("max_lateral_offset", 1000.0),
-        "min_height_offset": mirror_params_raw.get("min_height_offset", -100.0),
-        "max_height_offset": mirror_params_raw.get("max_height_offset", 100.0),
-    }
-
-    # --- Distortion & ring-outlier param files (from lidar.launch.py) ---
+    # Distortion & ring-outlier param files (from lidar.launch.py)
     distortion_param_file = ParameterFile(
         LaunchConfiguration("distortion_correction_node_param_path"), allow_substs=True
     )
@@ -75,59 +40,12 @@ def _build_nodes(context):
         LaunchConfiguration("ring_outlier_filter_node_param_path"), allow_substs=True
     )
 
+    input_frame = LaunchConfiguration("input_frame").perform(context)
+    output_frame = LaunchConfiguration("output_frame").perform(context)
+
     nodes = []
 
-    # 1) CropBox (self vehicle body)
-    crop_self_params = {
-        "input_frame": input_frame,
-        "output_frame": output_frame,
-        "negative": False,
-        # Placeholder wide bounds; adjust to your MKZ body if needed
-        "min_x": -100.0,
-        "max_x": 100.0,
-        "min_y": -100.0,
-        "max_y": 100.0,
-        "min_z": -10.0,
-        "max_z": 10.0,
-    }
-    nodes.append(
-        ComposableNode(
-            package="autoware_pointcloud_preprocessor",
-            plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
-            name="crop_box_filter_self",
-            remappings=[("input", "pointcloud_raw_ex"), ("output", "self_cropped/pointcloud_ex")],
-            parameters=[crop_self_params, {"processing_time_threshold_sec": 0.5}],
-            extra_arguments=[{"use_intra_process_comms": use_intra_process}],
-        )
-    )
-
-    # 2) CropBox (mirror region), falls back to passthrough bounds if no mirror params are set
-    crop_mirror_params = {
-        "input_frame": input_frame,
-        "output_frame": output_frame,
-        "negative": True,
-        "min_x": mirror_params["min_longitudinal_offset"],
-        "max_x": mirror_params["max_longitudinal_offset"],
-        "min_y": mirror_params["min_lateral_offset"],
-        "max_y": mirror_params["max_lateral_offset"],
-        "min_z": mirror_params["min_height_offset"],
-        "max_z": mirror_params["max_height_offset"],
-    }
-    nodes.append(
-        ComposableNode(
-            package="autoware_pointcloud_preprocessor",
-            plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
-            name="crop_box_filter_mirror",
-            remappings=[
-                ("input", "self_cropped/pointcloud_ex"),
-                ("output", "mirror_cropped/pointcloud_ex"),
-            ],
-            parameters=[crop_mirror_params, {"processing_time_threshold_sec": 0.5}],
-            extra_arguments=[{"use_intra_process_comms": use_intra_process}],
-        )
-    )
-
-    # 3) Distortion corrector
+    # 1) Distortion corrector
     nodes.append(
         ComposableNode(
             package="autoware_pointcloud_preprocessor",
@@ -136,47 +54,69 @@ def _build_nodes(context):
             remappings=[
                 ("~/input/twist", "/sensing/vehicle_velocity_converter/twist_with_covariance"),
                 ("~/input/imu", "/sensing/imu/imu_data"),
-                ("~/input/pointcloud", "mirror_cropped/pointcloud_ex"),
+                ("~/input/pointcloud", "pointcloud_raw_ex"),
                 ("~/output/pointcloud", "rectified/pointcloud_ex"),
             ],
-            parameters=[distortion_param_file, {"processing_time_threshold_sec": 0.5}],
+            parameters=[
+                distortion_param_file,
+                {"processing_time_threshold_sec": 0.5},
+            ],
             extra_arguments=[{"use_intra_process_comms": use_intra_process}],
         )
     )
 
-    # 4) Ring outlier filter
+    # 2) Ring outlier filter (main LiDAR output for Autoware)
     nodes.append(
         ComposableNode(
             package="autoware_pointcloud_preprocessor",
             plugin="autoware::pointcloud_preprocessor::RingOutlierFilterComponent",
             name="ring_outlier_filter_node",
-            remappings=[("input", "rectified/pointcloud_ex"), ("output", "pointcloud")],
-            parameters=[ring_param_file, {"processing_time_threshold_sec": 0.5}],
+            remappings=[
+                ("input", "rectified/pointcloud_ex"),
+                ("output", "pointcloud"),
+            ],
+            parameters=[
+                ring_param_file,
+                {"processing_time_threshold_sec": 0.5},
+            ],
             extra_arguments=[{"use_intra_process_comms": use_intra_process}],
         )
     )
 
-    # 5) Optional concatenate + time sync (not needed for single LiDAR; default off)
-    if use_concat_filter:
-        concat_param_path = LaunchConfiguration(
-            "concatenate_and_time_sync_node_param_path"
-        ).perform(context)
-        concat_param = ParameterFile(concat_param_path, allow_substs=True)
+    # 3) "Fake concat" passthrough so you have BOTH topics:
+    #    - /sensing/lidar/pointcloud
+    #    - /sensing/lidar/concatenated/pointcloud  (identical cloud)
+    #
+    # We use a CropBoxFilterComponent with negative=False and huge bounds so it
+    # simply republishes the same cloud under another topic name.
+    concat_passthrough_params = {
+        "input_frame": input_frame,
+        "output_frame": output_frame,
+        "negative": False,
+        "min_x": -1000.0,
+        "max_x": 1000.0,
+        "min_y": -1000.0,
+        "max_y": 1000.0,
+        "min_z": -100.0,
+        "max_z": 100.0,
+    }
 
-        nodes.append(
-            ComposableNode(
-                package="autoware_pointcloud_preprocessor",
-                plugin="autoware::pointcloud_preprocessor::PointCloudConcatenateDataSynchronizerComponent",
-                name="concatenate_and_time_sync_node",
-                # Inside container ns, this becomes /sensing/lidar/concatenated/pointcloud
-                remappings=[
-                    ("input", "pointcloud"),
-                    ("output", "concatenated/pointcloud"),
-                ],
-                parameters=[concat_param, {"processing_time_threshold_sec": 0.5}],
-                extra_arguments=[{"use_intra_process_comms": use_intra_process}],
-            )
+    nodes.append(
+        ComposableNode(
+            package="autoware_pointcloud_preprocessor",
+            plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
+            name="concat_passthrough",
+            remappings=[
+                ("input", "pointcloud"),
+                ("output", "concatenated/pointcloud"),
+            ],
+            parameters=[
+                concat_passthrough_params,
+                {"processing_time_threshold_sec": 0.5},
+            ],
+            extra_arguments=[{"use_intra_process_comms": use_intra_process}],
         )
+    )
 
     return nodes
 
@@ -192,7 +132,6 @@ def _launch_setup(context, *args, **kwargs):
     nodes = _build_nodes(context)
 
     if not nodes:
-        # Nothing to load; return empty list cleanly
         return []
 
     return [
@@ -225,30 +164,30 @@ def generate_launch_description():
                 default_value="True",
                 description="Enable intra-process comms for composable nodes.",
             ),
-            # Whether to load the concatenate/time-sync node
+            # Kept for compatibility; the real concat filter is not used anymore
             DeclareLaunchArgument(
                 "use_concat_filter",
                 default_value="False",
-                description="Enable concatenate/time-sync component.",
+                description="(Unused) Enable concatenate/time-sync component.",
             ),
-            # Frames
+            # Frames (used by the passthrough CropBox)
             DeclareLaunchArgument(
                 "input_frame",
                 default_value="base_link",
-                description="Input frame for crop filters.",
+                description="Input frame for passthrough concat filter.",
             ),
             DeclareLaunchArgument(
                 "output_frame",
                 default_value="base_link",
-                description="Output frame for crop filters.",
+                description="Output frame for passthrough concat filter.",
             ),
-            # Mirror crop YAML (optional)
+            # Mirror crop YAML arg kept for compatibility (unused now)
             DeclareLaunchArgument(
                 "vehicle_mirror_param_file",
                 default_value=PathJoinSubstitution(
                     [pkg_share, "config", "vehicle_mirror.param.yaml"]
                 ),
-                description="Vehicle mirror crop YAML; leave blank to disable.",
+                description="(Unused) Vehicle mirror crop YAML.",
             ),
             # Distortion & ring filter param files
             DeclareLaunchArgument(
@@ -265,13 +204,13 @@ def generate_launch_description():
                 ),
                 description="Parameter file for ring outlier filter.",
             ),
-            # Params for concatenate/time-sync
+            # Params for real concatenate/time-sync (kept for API compatibility; unused)
             DeclareLaunchArgument(
                 "concatenate_and_time_sync_node_param_path",
                 default_value=PathJoinSubstitution(
                     [pkg_share, "config", "concatenate_and_time_sync_node.param.yaml"]
                 ),
-                description="Parameter file for the concatenate/time-sync component.",
+                description="(Unused) Parameter file for concatenate/time-sync component.",
             ),
             OpaqueFunction(function=_launch_setup),
         ]
