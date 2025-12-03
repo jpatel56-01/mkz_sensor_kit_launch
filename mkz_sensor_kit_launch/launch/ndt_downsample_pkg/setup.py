@@ -18,8 +18,10 @@ setup(
     maintainer='mkz3',
     maintainer_email='jpatel56@vols.utk.edu',
     description=(
-        'Forward /sensing/lidar/concatenated/pointcloud '
-        'to /localization/util/downsample/pointcloud with sensor QoS.'
+        'Range + voxel + optional random downsample of '
+        '/sensing/lidar/concatenated/pointcloud into '
+        '/localization/util/downsample/pointcloud for NDT, '
+        'using sensor QoS.'
     ),
     license='Apache-2.0',
     tests_require=['pytest'],
