@@ -5,33 +5,31 @@
   <!-- Raw IMU topic from the NovAtel driver -->
   <arg name="imu_raw_name" default="/novatel/oem7/imu/data"/>
 
-  <!-- IMU corrector params (point this to your tuned file if you have one) -->
+  <!-- IMU corrector params (your tuned file) -->
   <arg name="imu_corrector_param_file"
        default="$(find-pkg-share individual_params)/config/default/mkz_sensor_kit/imu_corrector.param.yaml"/>
 
-  <!-- NEW: use the package's own gyro-odometer YAML -->
+  <!-- Gyro-odometer param file -->
   <arg name="gyro_odometer_param_file"
        default="$(find-pkg-share autoware_gyro_odometer)/config/gyro_odometer.param.yaml"/>
 
   <group>
+    <!-- Put both nodes under /sensing/imu -->
     <push-ros-namespace namespace="imu"/>
 
-    <!-- IMU Corrector: publishes /sensing/imu/imu_data -->
+    <!-- IMU Corrector: input = NovAtel raw; output = /sensing/imu/imu_data -->
     <include file="$(find-pkg-share autoware_imu_corrector)/launch/imu_corrector.launch.xml">
       <arg name="input_topic" value="$(var imu_raw_name)"/>
       <arg name="output_topic" value="imu_data"/>
       <arg name="params_file" value="$(var imu_corrector_param_file)"/>
     </include>
 
-    <!-- Gyro odometer: input = corrected IMU; output = twist_with_covariance -->
+    <!-- Gyro odometer: input = corrected IMU; output = /twist_estimator/twist_with_covariance -->
     <include file="$(find-pkg-share autoware_gyro_odometer)/launch/gyro_odometer.launch.xml">
-      <arg name="input_imu_topic" value="/sensing/imu/imu_data"/>
+      <arg name="input_imu_topic" value="imu_data"/>
       <arg name="output_twist_topic" value="/twist_estimator/twist_with_covariance"/>
-      <!-- NEW: feed its own param file (has output_frame etc.) -->
       <arg name="config_file" value="$(var gyro_odometer_param_file)"/>
     </include>
-
-    <!-- Gyro Bias Estimator: REMOVED per your diagram -->
   </group>
 </launch>
 

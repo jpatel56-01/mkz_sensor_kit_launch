@@ -1,4 +1,5 @@
 <launch>
+  <!-- Whether to start the NovAtel driver from this launch -->
   <arg name="launch_driver" default="true"/>
 
   <!-- Use package-installed config defaults; no custom receiver.yaml required -->
@@ -6,14 +7,15 @@
        default="$(find-pkg-share novatel_oem7_driver)/config/std_init_commands.yaml"/>
   <arg name="oem7_ip_addr" default="192.168.4.199"/>
 
-  <!-- Topics from NovAtel driver -->
-  <arg name="navsatfix_topic_name"   default="/novatel/oem7/fix"/>
-  <arg name="orientation_topic_name" default="/novatel/oem7/inspva"/>
-  <arg name="gnss_frame" default="gnss_link"/>
+  <!-- Input topics as GLOBAL names, matching the running NovAtel driver -->
+  <!-- Driver publishes /sensing/novatel/oem7/...; use those explicitly -->
+  <arg name="navsatfix_topic_name"   default="/sensing/novatel/oem7/fix"/>
+  <arg name="orientation_topic_name" default="/sensing/novatel/oem7/inspva"/>
+  <arg name="gnss_frame" default="gps"/>
 
+  <!-- NovAtel driver (unchanged behavior) -->
   <group if="$(var launch_driver)">
     <include file="$(find-pkg-share novatel_oem7_driver)/launch/oem7_net.launch.py">
-      <!-- Drop config_file unless you actually have a YAML -->
       <arg name="init_commands_file" value="$(var novatel_init_file)"/>
       <arg name="oem7_ip_addr" value="$(var oem7_ip_addr)"/>
       <!-- Optional if you need non-defaults:
@@ -23,15 +25,26 @@
     </include>
   </group>
 
+  <!-- GNSS poser (Autoware) -->
   <group>
+    <!-- Node names under /sensing/gnss when wrapped by outer 'sensing' namespace -->
     <push-ros-namespace namespace="gnss"/>
+
     <include file="$(find-pkg-share autoware_gnss_poser)/launch/gnss_poser.launch.xml">
+      <!-- Now subscribes directly to /sensing/novatel/oem7/fix -->
       <arg name="input_topic_fix" value="$(var navsatfix_topic_name)"/>
+
+      <!-- We still pass inspva but DISABLE INS orientation usage for now -->
       <arg name="input_topic_orientation" value="$(var orientation_topic_name)"/>
+
+      <!-- Output topics (relative; final names /sensing/gnss/...) -->
       <arg name="output_topic_gnss_pose" value="pose"/>
       <arg name="output_topic_gnss_pose_cov" value="pose_with_covariance"/>
       <arg name="output_topic_gnss_fixed" value="fixed"/>
-      <arg name="use_gnss_ins_orientation" value="true"/>
+
+      <!-- IMPORTANT: don't expect special GnssInsOrientationStamped yet -->
+      <arg name="use_gnss_ins_orientation" value="false"/>
+
       <arg name="gnss_frame" value="$(var gnss_frame)"/>
     </include>
   </group>

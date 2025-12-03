@@ -7,7 +7,6 @@
   <arg name="pointcloud_container_name" default="pointcloud_container"/>
   <arg name="vehicle_mirror_param_file" default="$(find-pkg-share mkz_sensor_kit_launch)/config/vehicle_mirror.param.yaml"/>
 
-  
   <!-- Velocity converter param -->
   <arg name="velocity_converter_param_file"
        default="$(find-pkg-share autoware_vehicle_velocity_converter)/config/vehicle_velocity_converter.param.yaml"/>
@@ -20,7 +19,8 @@
 
   <!-- IMU (processing only; do not start NovAtel driver here) -->
   <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/imu.launch.xml">
-    <arg name="launch_driver" value="true"/>
+    <!-- IMPORTANT: point this at the ACTUAL NovAtel IMU topic -->
+    <arg name="imu_raw_name" value="/novatel/oem7/imu/data"/>
   </include>
 
   <!-- GNSS (starts NovAtel driver ONCE) -->
@@ -34,5 +34,18 @@
     <arg name="output_twist_with_covariance" value="/sensing/vehicle_velocity_converter/twist_with_covariance"/>
     <arg name="config_file" value="$(var velocity_converter_param_file)"/>
   </include>
+
+  <!--
+    LiDAR concat → NDT downsample bridge.
+    This runs your helper node:
+
+      /sensing/lidar/concatenated/pointcloud
+        → /localization/util/downsample/pointcloud
+
+    so NDT always gets a cloud, even while the built-in filters are being debugged.
+  -->
+  <executable
+    cmd="python3 $(env HOME)/autoware_vehicle_ws/autoware_mkz_s/tools/concat_to_ndt_downsample.py"
+    output="screen"/>
 </launch>
 

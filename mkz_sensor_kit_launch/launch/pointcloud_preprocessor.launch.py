@@ -7,14 +7,16 @@
 # Default target container: /sensing/mkz_pointcloud_container
 #
 # Simplified LiDAR pipeline (single LiDAR, no self/mirror crops):
-#   pointcloud_raw_ex  -->  rectified/pointcloud_ex  -->  pointcloud
-#                                                       ↘  concatenated/pointcloud
+#   /sensing/pointcloud_raw_ex
+#       --> /sensing/rectified/pointcloud_ex
+#       --> /sensing/pointcloud
+#       --> /sensing/lidar/concatenated/pointcloud   (for Autoware localization)
 #
 # Global topics (with container namespace /sensing):
 #   /sensing/pointcloud_raw_ex
 #   /sensing/rectified/pointcloud_ex
 #   /sensing/pointcloud
-#   /sensing/concatenated/pointcloud
+#   /sensing/lidar/concatenated/pointcloud
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
@@ -83,9 +85,9 @@ def _build_nodes(context):
         )
     )
 
-    # 3) "Fake concat" passthrough so you have BOTH topics:
-    #    - /sensing/pointcloud
-    #    - /sensing/concatenated/pointcloud  (identical cloud)
+    # 3) "Fake concat" passthrough:
+    #    - Input:  /sensing/pointcloud
+    #    - Output: /sensing/lidar/concatenated/pointcloud  (what Autoware localization uses)
     #
     # We use a CropBoxFilterComponent with negative=False and huge bounds so it
     # simply republishes the same cloud under another topic name.
@@ -108,7 +110,9 @@ def _build_nodes(context):
             name="concat_passthrough",
             remappings=[
                 ("input", "pointcloud"),
-                ("output", "concatenated/pointcloud"),
+                # NOTE: this is now "lidar/concatenated/pointcloud" so the
+                # global topic becomes /sensing/lidar/concatenated/pointcloud
+                ("output", "lidar/concatenated/pointcloud"),
             ],
             parameters=[
                 concat_passthrough_params,
