@@ -37,15 +37,17 @@
 
   <!--
     LiDAR concat → NDT downsample bridge.
-    This runs your helper node:
 
       /sensing/lidar/concatenated/pointcloud
         → /localization/util/downsample/pointcloud
 
     so NDT always gets a cloud, even while the built-in filters are being debugged.
+    Now launched as a proper ROS 2 node from ndt_downsample_pkg.
   -->
-  <executable
-    cmd="python3 $(env HOME)/autoware_vehicle_ws/autoware_mkz_s/tools/concat_to_ndt_downsample.py"
+  <node
+    pkg="ndt_downsample_pkg"
+    exec="concat_to_ndt_downsample"
+    name="concat_to_ndt_downsample"
     output="screen"/>
 </launch>
 
