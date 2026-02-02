@@ -11,7 +11,7 @@ sensor_kit_base_link:
   # NovAtel IMU body frame relative to kit
   imu_link:
     x: -1.052432
-    y: -0.943000
+    y: -0.0254
     z: -1.319787
     roll: 0.447642
     pitch: -0.156325
@@ -19,8 +19,8 @@ sensor_kit_base_link:
 
   # GNSS antenna ARP relative to kit (from your tape measurements)
   gps:
-    x: -0.677782
-    y: -1.463700
+    x: -0.5842
+    y: -0.5588
     z: -0.513337
     roll: 0.000000
     pitch: 0.000000

@@ -20,7 +20,6 @@
   <!-- IMU (processing only; do not start NovAtel driver here) -->
   <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/imu.launch.xml">
     <!-- IMPORTANT: point this at the ACTUAL NovAtel IMU topic -->
-    <arg name="imu_raw_name" value="/novatel/oem7/imu/data"/>
   </include>
 
   <!-- GNSS (starts NovAtel driver ONCE) -->

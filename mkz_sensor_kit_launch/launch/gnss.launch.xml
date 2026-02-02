@@ -5,7 +5,7 @@
   <!-- Use package-installed config defaults; no custom receiver.yaml required -->
   <arg name="novatel_init_file"
        default="$(find-pkg-share novatel_oem7_driver)/config/std_init_commands.yaml"/>
-  <arg name="oem7_ip_addr" default="192.168.4.199"/>
+  <arg name="oem7_port_name" default="/dev/novatel"/>
 
   <!-- Input topics as GLOBAL names, matching the running NovAtel driver -->
   <!-- Driver publishes /sensing/novatel/oem7/...; use those explicitly -->
@@ -15,13 +15,10 @@
 
   <!-- NovAtel driver (unchanged behavior) -->
   <group if="$(var launch_driver)">
-    <include file="$(find-pkg-share novatel_oem7_driver)/launch/oem7_net.launch.py">
+    <include file="$(find-pkg-share novatel_oem7_driver)/launch/oem7_port.launch.py">
       <arg name="init_commands_file" value="$(var novatel_init_file)"/>
-      <arg name="oem7_ip_addr" value="$(var oem7_ip_addr)"/>
-      <!-- Optional if you need non-defaults:
-      <arg name="oem7_port" value="3001"/>
-      <arg name="oem7_if" value="Oem7ReceiverTcp"/>
-      -->
+      <arg name="oem7_port_name" value="$(var oem7_port_name)"/>
+      <arg name="oem7_port_baud" value="115200"/>
     </include>
   </group>
 
@@ -49,4 +46,5 @@
     </include>
   </group>
 </launch>
+
 
