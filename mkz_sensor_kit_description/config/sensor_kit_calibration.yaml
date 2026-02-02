@@ -13,9 +13,9 @@ sensor_kit_base_link:
     x: -1.052432
     y: -0.0254
     z: -1.319787
-    roll: 0.447642
-    pitch: -0.156325
-    yaw: 1.549937
+    roll: 0
+    pitch: 0
+    yaw: 0
 
   # GNSS antenna ARP relative to kit (from your tape measurements)
   gps:
