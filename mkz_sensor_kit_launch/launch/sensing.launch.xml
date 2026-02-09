@@ -43,10 +43,6 @@
     so NDT always gets a cloud, even while the built-in filters are being debugged.
     Now launched as a proper ROS 2 node from ndt_downsample_pkg.
   -->
-  <node
-    pkg="ndt_downsample_pkg"
-    exec="concat_to_ndt_downsample"
-    name="concat_to_ndt_downsample"
-    output="screen"/>
+
 </launch>
 

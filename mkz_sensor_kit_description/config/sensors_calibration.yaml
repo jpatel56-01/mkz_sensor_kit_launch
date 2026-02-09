@@ -5,4 +5,4 @@ base_link:
     z: 2.028825   # height above ground (m)
     roll: 0.0000
     pitch: 0.0000
-    yaw: 0.0000
+    yaw: 1.57079632679
