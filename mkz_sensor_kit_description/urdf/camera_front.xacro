@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:macro name="camera_front_macro" params="name parent namespace x y z roll pitch yaw">
+    <xacro:property name="sensor_box_x" value="0.06"/>
+    <xacro:property name="sensor_box_y" value="0.03"/>
+    <xacro:property name="sensor_box_z" value="0.03"/>
+    <xacro:property name="mass" value="0.10"/>
+
+    <!-- Mount camera body frame -->
+    <joint name="${name}_joint" type="fixed">
+      <origin rpy="${roll} ${pitch} ${yaw}" xyz="${x} ${y} ${z}"/>
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+    </joint>
+
+    <link name="${name}_link">
+      <visual>
+        <geometry>
+          <box size="${sensor_box_x} ${sensor_box_y} ${sensor_box_z}"/>
+        </geometry>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <material name="red">
+          <color rgba="1.0 0.0 0.0 1.0"/>
+        </material>
+      </visual>
+
+      <collision>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+          <box size="${sensor_box_x} ${sensor_box_y} ${sensor_box_z}"/>
+        </geometry>
+      </collision>
+
+      <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value="${mass}"/>
+        <inertia
+          ixx="${(sensor_box_y*sensor_box_y + sensor_box_z*sensor_box_z) * mass / 12.0}"
+          ixy="0.0"
+          ixz="0.0"
+          iyy="${(sensor_box_x*sensor_box_x + sensor_box_z*sensor_box_z) * mass / 12.0}"
+          iyz="0.0"
+          izz="${(sensor_box_x*sensor_box_x + sensor_box_y*sensor_box_y) * mass / 12.0}"
+        />
+      </inertial>
+    </link>
+
+    <!-- Optical frame (REP-103) z forward, x right, y down -->
+    <!-- Standard rotation from camera body frame (x forward, y left, z up) to optical -->
+    <joint name="${name}_optical_joint" type="fixed">
+      <origin rpy="${-pi/2} 0 ${-pi/2}" xyz="0 0 0"/>
+      <parent link="${name}_link"/>
+      <child link="${name}_optical_frame"/>
+    </joint>
+
+    <link name="${name}_optical_frame"/>
+
+  </xacro:macro>
+
+</robot>

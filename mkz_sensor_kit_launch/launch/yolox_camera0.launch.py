@@ -1,0 +1,71 @@
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration, EnvironmentVariable
+from launch_ros.actions import Node
+
+
+def generate_launch_description():
+    # Allow overriding the input image topic from the command line if needed
+    input_image = DeclareLaunchArgument(
+        "input_image",
+        default_value="/sensing/camera/camera0/image_rect_color",
+        description="YOLOX input image topic",
+    )
+
+    home = EnvironmentVariable("HOME")
+
+    return LaunchDescription(
+        [
+            input_image,
+            Node(
+                package="autoware_tensorrt_yolox",
+                executable="autoware_tensorrt_yolox_node_exe",
+                name="tensorrt_yolox",
+                output="screen",
+                remappings=[
+                    # Remap YOLOX subscription endpoint to your camera topic
+                    ("in/image", LaunchConfiguration("input_image")),
+                ],
+		parameters=[{
+    			# Required to avoid statically-typed init crashes
+    			"gpu_id": 0,
+    			"precision": "fp16",
+    			"score_threshold": 0.3,
+    			"nms_threshold": 0.7,
+
+    			# Required paths
+    			"model_path": [home, "/autoware_data/tensorrt_yolox/yolox-sPlus-opt.onnx"],
+    			"label_path": [home, "/autoware_data/tensorrt_yolox/label.txt"],
+
+    			# General behavior
+    			"build_only": False,
+   			"preprocess_on_gpu": True,
+
+    			# TRT / calibration / quantization (initialize even if unused)
+    			"calibration_algorithm": "MinMax",
+    			"calibration_image_list_path": "",
+    			"clip_value": 0.0,
+    			"dla_core_id": -1,
+    			"profile_per_layer": False,
+    			"quantize_first_layer": False,
+    			"quantize_last_layer": False,
+
+    			# ROI overlap / mask overlay features (initialize safely off)
+    			"is_publish_color_mask": False,
+    			"is_roi_overlap_segment": False,
+    			"overlap_roi_score_threshold": 0.0,
+    			"color_map_path": [home, "/autoware_data/tensorrt_yolox/semseg_color_map.csv"],
+
+    			# Segment-label overlay toggles (initialize all to False)
+    			"roi_overlay_segment_label.UNKNOWN": False,
+    			"roi_overlay_segment_label.CAR": False,
+    			"roi_overlay_segment_label.TRUCK": False,
+   			"roi_overlay_segment_label.BUS": False,
+    			"roi_overlay_segment_label.MOTORCYCLE": False,
+    			"roi_overlay_segment_label.BICYCLE": False,
+    			"roi_overlay_segment_label.PEDESTRIAN": False,
+    			"roi_overlay_segment_label.ANIMAL": False,
+		}]
+            ),
+        ]
+    )

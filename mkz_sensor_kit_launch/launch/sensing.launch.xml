@@ -16,6 +16,15 @@
     <arg name="pointcloud_container_name" value="$(var pointcloud_container_name)"/>
     <arg name="vehicle_mirror_param_file" value="$(var vehicle_mirror_param_file)"/>
   </include>
+  
+  <!-- Camera (Basler pylon) -->
+  <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/camera.launch.py"/>
+  <arg name="use_yolox" default="true"/>
+  <node if="$(var use_yolox)" pkg="topic_tools" exec="relay" name="camera0_to_yolox_relay"
+      args="/sensing/camera/camera0/image_rect_color /sensing/tensorrt_yolox/in/image"
+      output="screen"/>
+  <include if="$(var use_yolox)"
+         file="$(find-pkg-share mkz_sensor_kit_launch)/launch/yolox_camera0.launch.py"/>
 
   <!-- IMU (processing only; do not start NovAtel driver here) -->
   <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/imu.launch.xml">
