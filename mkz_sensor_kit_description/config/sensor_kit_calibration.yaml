@@ -28,10 +28,10 @@ sensor_kit_base_link:
     
   # Camera front Wide relative to kit (camera mounting point)
   camera_front:
-    x: 0.2921
-    y: -0.08255
-    z: -0.37465
+    x: -0.09270337361353152
+    y: -0.2921
+    z: -0.35409296057048567
     roll: 0.0
     pitch: 0.0
-    yaw: 0.0
+    yaw: -1.5708
 

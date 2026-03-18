@@ -122,7 +122,7 @@ def generate_launch_description():
             "data_port": "2368",
             "gnss_port": "10110",
             "return_mode": "Strongest",
-            "rotation_speed_rpm": "600",
+            "rotation_speed_rpm": "1200",
             "packet_mtu_size": "1500",
             "udp_socket_receive_buffer_size_bytes": "5400000",
             "udp_only": "true",

@@ -102,7 +102,7 @@ def generate_launch_description():
             DeclareLaunchArgument("data_port", default_value="2368"),
             DeclareLaunchArgument("gnss_port", default_value="10110"),
             DeclareLaunchArgument("return_mode", default_value="Strongest"),
-            DeclareLaunchArgument("rotation_speed_rpm", default_value="600"),
+            DeclareLaunchArgument("rotation_speed_rpm", default_value="1200"),
             DeclareLaunchArgument("packet_mtu_size", default_value="1500"),
             DeclareLaunchArgument(
                 "udp_socket_receive_buffer_size_bytes", default_value="5400000"
