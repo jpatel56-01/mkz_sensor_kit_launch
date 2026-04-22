@@ -4,8 +4,7 @@
   <arg name="vehicle_id" default="$(env VEHICLE_ID default)"/>
 
   <!-- Optional args -->
-  <arg name="pointcloud_container_name" default="pointcloud_container"/>
-  <arg name="vehicle_mirror_param_file" default="$(find-pkg-share mkz_sensor_kit_launch)/config/vehicle_mirror.param.yaml"/>
+  <arg name="pointcloud_container_name" default="mkz_pointcloud_container"/>
 
   <!-- Velocity converter param -->
   <arg name="velocity_converter_param_file"
@@ -13,8 +12,6 @@
 
   <!-- LiDAR (Hesai + preprocessor) -->
   <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/lidar.launch.py">
-    <arg name="pointcloud_container_name" value="$(var pointcloud_container_name)"/>
-    <arg name="vehicle_mirror_param_file" value="$(var vehicle_mirror_param_file)"/>
   </include>
 
   <!-- IMU (processing only; do not start NovAtel driver here) -->
