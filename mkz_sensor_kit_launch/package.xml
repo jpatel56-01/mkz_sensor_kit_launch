@@ -14,16 +14,12 @@
   <!-- Launch infra & helpers (from reference) -->
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
-  <exec_depend>ros2launch</exec_depend>
   <exec_depend>rclcpp_components</exec_depend>
-  <exec_depend>ament_index_python</exec_depend>
-  <exec_depend>yaml_cpp_vendor</exec_depend>
 
   <!-- Drivers -->
   <exec_depend>nebula_ros</exec_depend>
   <exec_depend>novatel_oem7_driver</exec_depend>
   <exec_depend>pylon_ros2_camera_component</exec_depend>
-  <exec_depend>image_proc</exec_depend>
 
   <!-- Autoware sensing building blocks -->
   <exec_depend>autoware_pointcloud_preprocessor</exec_depend>
@@ -33,9 +29,9 @@
 
   <!-- Diagnostics (UI) -->
   <exec_depend>diagnostic_aggregator</exec_depend>
-
-  <!-- (Optional) utilities you may use -->
-  <exec_depend>topic_tools</exec_depend>
+  
+  <!-- YOLOX inference -->
+  <exec_depend>autoware_tensorrt_yolox</exec_depend>
 
   <!-- Tests (unchanged) -->
   <test_depend>ament_lint_auto</test_depend>

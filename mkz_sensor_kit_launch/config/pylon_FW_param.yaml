@@ -3,7 +3,7 @@
 /**:
   ros__parameters:
 
-    startup_user_set: "UserSet1"
+    startup_user_set: "UserSet2"
     
     #  The tf frame under which the images were published
     camera_frame: camera_front_optical_frame

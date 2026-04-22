@@ -20,11 +20,10 @@
   <!-- Camera (Basler pylon) -->
   <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/camera.launch.py"/>
   <arg name="use_yolox" default="true"/>
-  <node if="$(var use_yolox)" pkg="topic_tools" exec="relay" name="camera0_to_yolox_relay"
-      args="/sensing/camera/camera0/image_rect_color /sensing/tensorrt_yolox/in/image"
-      output="screen"/>
   <include if="$(var use_yolox)"
-         file="$(find-pkg-share mkz_sensor_kit_launch)/launch/yolox_camera0.launch.py"/>
+         file="$(find-pkg-share mkz_sensor_kit_launch)/launch/yolox_camera0.launch.py">
+    <arg name="input_image" value="/sensing/camera/camera0/image_rect_color"/>
+  </include>
 
   <!-- IMU (processing only; do not start NovAtel driver here) -->
   <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/imu.launch.xml">
