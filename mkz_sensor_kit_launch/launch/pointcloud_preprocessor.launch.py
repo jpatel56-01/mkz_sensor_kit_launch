@@ -1,22 +1,13 @@
 # mkz_sensor_kit_launch/launch/pointcloud_preprocessor.launch.py
 #
-# Loads LiDAR preprocessing composable nodes into an existing container.
-# The container FQN is computed from:
-#   container_namespace + "/" + pointcloud_container_name
+# 3-LiDAR preprocessing pipeline
 #
-# Default target container: /sensing/mkz_pointcloud_container
+# TOP (Pandar64)   -> distortion -> ring filter
+# LEFT (VLP16)     -> distortion -> crop box -> ring filter
+# RIGHT (VLP16)    -> distortion -> crop box -> ring filter
 #
-# Simplified LiDAR pipeline (single LiDAR, no self/mirror crops):
-#   /sensing/pointcloud_raw_ex
-#       --> /sensing/rectified/pointcloud_ex
-#       --> /sensing/pointcloud
-#       --> /sensing/lidar/concatenated/pointcloud   (for Autoware localization)
-#
-# Global topics (with container namespace /sensing):
-#   /sensing/pointcloud_raw_ex
-#   /sensing/rectified/pointcloud_ex
-#   /sensing/pointcloud
-#   /sensing/lidar/concatenated/pointcloud
+# All three feed a real concatenate node:
+# /sensing/lidar/concatenated/pointcloud
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
@@ -31,93 +22,162 @@ def _build_nodes(context):
     use_intra_process = (
         LaunchConfiguration("use_intra_process").perform(context).lower() == "true"
     )
-    # Kept for compatibility but NOT used (we no longer spawn the real concat filter)
-    _ = LaunchConfiguration("use_concat_filter").perform(context)
 
-    # Distortion & ring-outlier param files (from lidar.launch.py)
     distortion_param_file = ParameterFile(
-        LaunchConfiguration("distortion_correction_node_param_path"), allow_substs=True
-    )
-    ring_param_file = ParameterFile(
-        LaunchConfiguration("ring_outlier_filter_node_param_path"), allow_substs=True
+        LaunchConfiguration("distortion_correction_node_param_path"),
+        allow_substs=True,
     )
 
-    input_frame = LaunchConfiguration("input_frame").perform(context)
-    output_frame = LaunchConfiguration("output_frame").perform(context)
+    ring_param_file = ParameterFile(
+        LaunchConfiguration("ring_outlier_filter_node_param_path"),
+        allow_substs=True,
+    )
+
+    cropbox_param_file = ParameterFile(
+        LaunchConfiguration("crop_box_filter_param_path"),
+        allow_substs=True,
+    )
+
+    concat_param_file = ParameterFile(
+        LaunchConfiguration("concatenate_and_time_sync_node_param_path"),
+        allow_substs=True,
+    )
 
     nodes = []
 
-    # 1) Distortion corrector
+    # ---------------- TOP LIDAR (Pandar64) ----------------
     nodes.append(
         ComposableNode(
             package="autoware_pointcloud_preprocessor",
             plugin="autoware::pointcloud_preprocessor::DistortionCorrectorComponent",
-            name="distortion_corrector_node",
+            name="top_distortion_corrector",
             remappings=[
                 ("~/input/twist", "/sensing/vehicle_velocity_converter/twist_with_covariance"),
                 ("~/input/imu", "/sensing/imu/imu_data"),
-                ("~/input/pointcloud", "pointcloud_raw_ex"),
-                ("~/output/pointcloud", "rectified/pointcloud_ex"),
+                ("~/input/pointcloud", "/sensing/pointcloud_raw_ex"),
+                ("~/output/pointcloud", "top/rectified/pointcloud"),
             ],
-            parameters=[
-                distortion_param_file,
-                {"processing_time_threshold_sec": 0.5},
-            ],
+            parameters=[distortion_param_file],
             extra_arguments=[{"use_intra_process_comms": use_intra_process}],
         )
     )
 
-    # 2) Ring outlier filter (main LiDAR output for Autoware)
     nodes.append(
         ComposableNode(
             package="autoware_pointcloud_preprocessor",
             plugin="autoware::pointcloud_preprocessor::RingOutlierFilterComponent",
-            name="ring_outlier_filter_node",
+            name="top_ring_filter",
             remappings=[
-                ("input", "rectified/pointcloud_ex"),
-                ("output", "pointcloud"),
+                ("input", "top/rectified/pointcloud"),
+                ("output", "top/filtered/pointcloud"),
             ],
-            parameters=[
-                ring_param_file,
-                {"processing_time_threshold_sec": 0.5},
-            ],
+            parameters=[ring_param_file],
             extra_arguments=[{"use_intra_process_comms": use_intra_process}],
         )
     )
 
-    # 3) "Fake concat" passthrough:
-    #    - Input:  /sensing/pointcloud
-    #    - Output: /sensing/lidar/concatenated/pointcloud  (what Autoware localization uses)
-    #
-    # We use a CropBoxFilterComponent with negative=False and huge bounds so it
-    # simply republishes the same cloud under another topic name.
-    concat_passthrough_params = {
-        "input_frame": input_frame,
-        "output_frame": output_frame,
-        "negative": False,
-        "min_x": -1000.0,
-        "max_x": 1000.0,
-        "min_y": -1000.0,
-        "max_y": 1000.0,
-        "min_z": -100.0,
-        "max_z": 100.0,
-    }
+    # ---------------- LEFT VLP16 ----------------
+    nodes.append(
+        ComposableNode(
+            package="autoware_pointcloud_preprocessor",
+            plugin="autoware::pointcloud_preprocessor::DistortionCorrectorComponent",
+            name="left_distortion_corrector",
+            remappings=[
+                ("~/input/twist", "/sensing/vehicle_velocity_converter/twist_with_covariance"),
+                ("~/input/imu", "/sensing/imu/imu_data"),
+                ("~/input/pointcloud", "/sensing/velodyne_left/velodyne_points"),
+                ("~/output/pointcloud", "left/rectified/pointcloud"),
+            ],
+            parameters=[distortion_param_file],
+            extra_arguments=[{"use_intra_process_comms": use_intra_process}],
+        )
+    )
 
     nodes.append(
         ComposableNode(
             package="autoware_pointcloud_preprocessor",
             plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
-            name="concat_passthrough",
+            name="left_vehicle_self_cropbox",
             remappings=[
-                ("input", "pointcloud"),
-                # NOTE: this is now "lidar/concatenated/pointcloud" so the
-                # global topic becomes /sensing/lidar/concatenated/pointcloud
+                ("input", "left/rectified/pointcloud"),
+                ("output", "left/cropped/pointcloud"),
+            ],
+            parameters=[cropbox_param_file],
+            extra_arguments=[{"use_intra_process_comms": use_intra_process}],
+        )
+    )
+
+    nodes.append(
+        ComposableNode(
+            package="autoware_pointcloud_preprocessor",
+            plugin="autoware::pointcloud_preprocessor::RingOutlierFilterComponent",
+            name="left_ring_filter",
+            remappings=[
+                ("input", "left/cropped/pointcloud"),
+                ("output", "left/filtered/pointcloud"),
+            ],
+            parameters=[ring_param_file],
+            extra_arguments=[{"use_intra_process_comms": use_intra_process}],
+        )
+    )
+
+    # ---------------- RIGHT VLP16 ----------------
+    nodes.append(
+        ComposableNode(
+            package="autoware_pointcloud_preprocessor",
+            plugin="autoware::pointcloud_preprocessor::DistortionCorrectorComponent",
+            name="right_distortion_corrector",
+            remappings=[
+                ("~/input/twist", "/sensing/vehicle_velocity_converter/twist_with_covariance"),
+                ("~/input/imu", "/sensing/imu/imu_data"),
+                ("~/input/pointcloud", "/sensing/velodyne_right/velodyne_points"),
+                ("~/output/pointcloud", "right/rectified/pointcloud"),
+            ],
+            parameters=[distortion_param_file],
+            extra_arguments=[{"use_intra_process_comms": use_intra_process}],
+        )
+    )
+
+    nodes.append(
+        ComposableNode(
+            package="autoware_pointcloud_preprocessor",
+            plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
+            name="right_vehicle_self_cropbox",
+            remappings=[
+                ("input", "right/rectified/pointcloud"),
+                ("output", "right/cropped/pointcloud"),
+            ],
+            parameters=[cropbox_param_file],
+            extra_arguments=[{"use_intra_process_comms": use_intra_process}],
+        )
+    )
+
+    nodes.append(
+        ComposableNode(
+            package="autoware_pointcloud_preprocessor",
+            plugin="autoware::pointcloud_preprocessor::RingOutlierFilterComponent",
+            name="right_ring_filter",
+            remappings=[
+                ("input", "right/cropped/pointcloud"),
+                ("output", "right/filtered/pointcloud"),
+            ],
+            parameters=[ring_param_file],
+            extra_arguments=[{"use_intra_process_comms": use_intra_process}],
+        )
+    )
+
+    # ---------------- CONCATENATE NODE ----------------
+    nodes.append(
+        ComposableNode(
+            package="autoware_pointcloud_preprocessor",
+            plugin="autoware::pointcloud_preprocessor::PointCloudConcatenateDataSynchronizerComponent",
+            name="pointcloud_concatenator",
+            remappings=[
+                ("~/input/twist", "/sensing/vehicle_velocity_converter/twist_with_covariance"),
                 ("output", "lidar/concatenated/pointcloud"),
+                ("output_info", "lidar/concatenated/pointcloud_info"),
             ],
-            parameters=[
-                concat_passthrough_params,
-                {"processing_time_threshold_sec": 0.5},
-            ],
+            parameters=[concat_param_file],
             extra_arguments=[{"use_intra_process_comms": use_intra_process}],
         )
     )
@@ -128,15 +188,13 @@ def _build_nodes(context):
 def _launch_setup(context, *args, **kwargs):
     container_name = LaunchConfiguration("pointcloud_container_name").perform(context)
     container_ns = LaunchConfiguration("container_namespace").perform(context)
+
     if container_ns.endswith("/"):
         container_fqn = f"{container_ns}{container_name}"
     else:
         container_fqn = f"{container_ns}/{container_name}"
 
     nodes = _build_nodes(context)
-
-    if not nodes:
-        return []
 
     return [
         LoadComposableNodes(
@@ -151,72 +209,42 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            # Container identity (must match lidar.launch.py / nebula_node_container.launch.py)
             DeclareLaunchArgument(
                 "pointcloud_container_name",
                 default_value="mkz_pointcloud_container",
-                description="Name of the pointcloud container node.",
             ),
             DeclareLaunchArgument(
                 "container_namespace",
                 default_value="/sensing",
-                description="Namespace of the pointcloud container node.",
             ),
-            # IPC toggle (recommended True for component containers)
             DeclareLaunchArgument(
                 "use_intra_process",
                 default_value="True",
-                description="Enable intra-process comms for composable nodes.",
             ),
-            # Kept for compatibility; the real concat filter is not used anymore
-            DeclareLaunchArgument(
-                "use_concat_filter",
-                default_value="False",
-                description="(Unused) Enable concatenate/time-sync component.",
-            ),
-            # Frames (used by the passthrough CropBox)
-            DeclareLaunchArgument(
-                "input_frame",
-                default_value="base_link",
-                description="Input frame for passthrough concat filter.",
-            ),
-            DeclareLaunchArgument(
-                "output_frame",
-                default_value="base_link",
-                description="Output frame for passthrough concat filter.",
-            ),
-            # Mirror crop YAML arg kept for compatibility (unused now)
-            DeclareLaunchArgument(
-                "vehicle_mirror_param_file",
-                default_value=PathJoinSubstitution(
-                    [pkg_share, "config", "vehicle_mirror.param.yaml"]
-                ),
-                description="(Unused) Vehicle mirror crop YAML.",
-            ),
-            # Distortion & ring filter param files
             DeclareLaunchArgument(
                 "distortion_correction_node_param_path",
                 default_value=PathJoinSubstitution(
                     [pkg_share, "config", "distortion_corrector_node.param.yaml"]
                 ),
-                description="Parameter file for distortion corrector.",
             ),
             DeclareLaunchArgument(
                 "ring_outlier_filter_node_param_path",
                 default_value=PathJoinSubstitution(
                     [pkg_share, "config", "ring_outlier_filter_node.param.yaml"]
                 ),
-                description="Parameter file for ring outlier filter.",
             ),
-            # Params for real concatenate/time-sync (kept for API compatibility; unused)
+            DeclareLaunchArgument(
+                "crop_box_filter_param_path",
+                default_value=PathJoinSubstitution(
+                    [pkg_share, "config", "vehicle_self_cropbox.param.yaml"]
+                ),
+            ),
             DeclareLaunchArgument(
                 "concatenate_and_time_sync_node_param_path",
                 default_value=PathJoinSubstitution(
                     [pkg_share, "config", "concatenate_and_time_sync_node.param.yaml"]
                 ),
-                description="(Unused) Parameter file for concatenate/time-sync component.",
             ),
             OpaqueFunction(function=_launch_setup),
         ]
     )
-

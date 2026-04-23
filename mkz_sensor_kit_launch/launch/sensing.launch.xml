@@ -5,7 +5,6 @@
 
   <!-- Optional args -->
   <arg name="pointcloud_container_name" default="pointcloud_container"/>
-  <arg name="vehicle_mirror_param_file" default="$(find-pkg-share mkz_sensor_kit_launch)/config/vehicle_mirror.param.yaml"/>
 
   <!-- Velocity converter param -->
   <arg name="velocity_converter_param_file"
@@ -13,10 +12,8 @@
 
   <!-- LiDAR (Hesai + preprocessor) -->
   <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/lidar.launch.py">
-    <arg name="pointcloud_container_name" value="$(var pointcloud_container_name)"/>
-    <arg name="vehicle_mirror_param_file" value="$(var vehicle_mirror_param_file)"/>
   </include>
-  
+ 
   <!-- Camera (Basler pylon) -->
   <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/camera.launch.py"/>
   <arg name="use_yolox" default="true"/>

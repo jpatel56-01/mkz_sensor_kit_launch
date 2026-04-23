@@ -5,7 +5,7 @@
   <!-- Use package-installed config defaults; no custom receiver.yaml required -->
   <arg name="novatel_init_file"
        default="$(find-pkg-share novatel_oem7_driver)/config/std_init_commands.yaml"/>
-  <arg name="oem7_port_name" default="/dev/serial/by-id/usb-NovAtel_Inc._NovAtel_GPS_Receiver_DMMU18070071S-if00-port0"/>
+  <arg name="oem7_port_name" default="/dev/novatel"/>
 
   <!-- Input topics as GLOBAL names, matching the running NovAtel driver -->
   <!-- Driver publishes /sensing/novatel/oem7/...; use those explicitly -->
