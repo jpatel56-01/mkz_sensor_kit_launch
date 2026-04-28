@@ -1,6 +1,6 @@
 image_width: 1920
 image_height: 1200
-camera_name: front_wide
+camera_name: front_pass
 camera_matrix:
   rows: 3
   cols: 3

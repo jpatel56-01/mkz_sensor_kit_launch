@@ -10,7 +10,7 @@
 
     #  The DeviceUserID of the camera. If empty, the first camera found in the
     #  device list will be used
-    device_user_id: "front_wide"
+    device_user_id: "front_pass"
 
     #  The CameraInfo URL (Uniform Resource Locator) where the optional intrinsic
     #  camera calibration parameters are stored. This URL string will be parsed
