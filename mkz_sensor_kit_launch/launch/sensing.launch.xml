@@ -1,0 +1,56 @@
+<launch>
+  <!-- Top-level toggle ONLY for GNSS include (driver starts once there) -->
+  <arg name="launch_driver" default="true" description="launch NovAtel driver from GNSS include"/>
+  <arg name="vehicle_id" default="$(env VEHICLE_ID default)"/>
+
+  <!-- Optional args -->
+  <arg name="pointcloud_container_name" default="pointcloud_container"/>
+  <arg name="vehicle_mirror_param_file" default="$(find-pkg-share mkz_sensor_kit_launch)/config/vehicle_mirror.param.yaml"/>
+
+  <!-- Velocity converter param -->
+  <arg name="velocity_converter_param_file"
+       default="$(find-pkg-share autoware_vehicle_velocity_converter)/config/vehicle_velocity_converter.param.yaml"/>
+
+  <!-- LiDAR (Hesai + preprocessor) -->
+  <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/lidar.launch.py">
+    <arg name="pointcloud_container_name" value="$(var pointcloud_container_name)"/>
+    <arg name="vehicle_mirror_param_file" value="$(var vehicle_mirror_param_file)"/>
+  </include>
+  
+  <!-- Camera (Basler pylon) -->
+  <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/camera.launch.py"/>
+  <arg name="use_yolox" default="true"/>
+  <include if="$(var use_yolox)"
+         file="$(find-pkg-share mkz_sensor_kit_launch)/launch/yolox_camera0.launch.py">
+    <arg name="input_image" value="/sensing/camera/camera0/image_rect_color"/>
+  </include>
+
+  <!-- IMU (processing only; do not start NovAtel driver here) -->
+  <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/imu.launch.xml">
+    <!-- IMPORTANT: point this at the ACTUAL NovAtel IMU topic -->
+  </include>
+
+  <!-- GNSS (starts NovAtel driver ONCE) -->
+  <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/gnss.launch.xml">
+    <arg name="launch_driver" value="true"/>
+  </include>
+
+  <!-- Vehicle velocity converter -->
+  <include file="$(find-pkg-share autoware_vehicle_velocity_converter)/launch/vehicle_velocity_converter.launch.xml">
+    <arg name="input_vehicle_velocity_topic" value="/vehicle/status/velocity_status"/>
+    <arg name="output_twist_with_covariance" value="/sensing/vehicle_velocity_converter/twist_with_covariance"/>
+    <arg name="config_file" value="$(var velocity_converter_param_file)"/>
+  </include>
+
+  <!--
+    LiDAR concat → NDT downsample bridge.
+
+      /sensing/lidar/concatenated/pointcloud
+        → /localization/util/downsample/pointcloud
+
+    so NDT always gets a cloud, even while the built-in filters are being debugged.
+    Now launched as a proper ROS 2 node from ndt_downsample_pkg.
+  -->
+
+</launch>
+

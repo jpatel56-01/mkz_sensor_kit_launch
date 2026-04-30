@@ -1,0 +1,34 @@
+/**:
+  ros__parameters:
+    debug_mode: false
+    has_static_tf_only: false
+    rosbag_length: 10.0
+    maximum_queue_size: 5
+    timeout_sec: 0.2
+    is_motion_compensated: true
+
+    # --- Publish options ---
+    publish_synchronized_pointcloud: true
+    keep_input_frame_in_synchronized_pointcloud: true
+    publish_previous_but_late_pointcloud: false
+    synchronized_pointcloud_postfix: pointcloud
+
+    # --- Vehicle motion source ---
+    input_twist_topic_type: twist
+
+    # --- For a single Hesai LiDAR ---
+    # Previously multiple: right/top/left
+    # We now feed only the single preprocessed cloud from nebula_node_container
+    input_topics: [
+      "/sensing/lidar/top/pointcloud"
+    ]
+
+    # --- Output ---
+    output_frame: base_link   # base frame used by perception/localization
+
+    # --- Synchronization strategy ---
+    matching_strategy:
+      type: advanced
+      lidar_timestamp_offsets: [0.0]
+      lidar_timestamp_noise_window: [0.01]
+

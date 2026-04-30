@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<robot name="vehicle" xmlns:xacro="http://ros.org/wiki/xacro">
+  <!--
+    mkz_sensor_kit_description/urdf/sensors.xacro
+    Attaches the whole kit to base_link using config/sensors_calibration.yaml
+  -->
+
+  <!-- Load base_link → sensor_kit_base_link transform -->
+  <xacro:arg name="config_dir" default="$(find mkz_sensor_kit_description)/config"/>
+  <xacro:property name="sensors_calib" value="${xacro.load_yaml('$(arg config_dir)/sensors_calibration.yaml')}"/>
+
+  <!-- Bring in the kit macro and instantiate it on base_link -->
+  <xacro:include filename="sensor_kit.xacro"/>
+  <xacro:sensor_kit_macro
+    parent="base_link"
+    x="${sensors_calib['base_link']['sensor_kit_base_link']['x']}"
+    y="${sensors_calib['base_link']['sensor_kit_base_link']['y']}"
+    z="${sensors_calib['base_link']['sensor_kit_base_link']['z']}"
+    roll="${sensors_calib['base_link']['sensor_kit_base_link']['roll']}"
+    pitch="${sensors_calib['base_link']['sensor_kit_base_link']['pitch']}"
+    yaw="${sensors_calib['base_link']['sensor_kit_base_link']['yaw']}" />
+</robot>

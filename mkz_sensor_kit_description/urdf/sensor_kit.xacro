@@ -1,0 +1,94 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <!--
+    mkz_sensor_kit_description/urdf/sensor_kit.xacro
+    - Includes sensor macros (pandar64, imu)
+    - Loads sensor_kit_calibration.yaml
+    - Defines sensor_kit_macro, which creates sensor_kit_base_link and
+      instantiates hesai_lidar, imu_link, and gps frames
+  -->
+
+  <!-- Args -->
+  <xacro:arg name="gpu" default="false"/>
+  <xacro:arg name="config_dir" default="$(find mkz_sensor_kit_description)/config"/>
+
+  <!-- Load kit-relative calibration -->
+  <xacro:property name="kit_calib" value="${xacro.load_yaml('$(arg config_dir)/sensor_kit_calibration.yaml')}"/>
+
+  <!-- Include your sensor macros -->
+  <xacro:include filename="$(find mkz_sensor_kit_description)/urdf/pandar_64.xacro"/>
+  <xacro:include filename="$(find mkz_sensor_kit_description)/urdf/imu.xacro"/>
+  <xacro:include filename="$(find mkz_sensor_kit_description)/urdf/camera_front.xacro"/>
+
+  <!-- Lightweight frame-only macro (for gps) -->
+  <xacro:macro name="frame_stub" params="name parent x y z roll pitch yaw">
+    <link name="${name}"/>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}"/>
+      <origin xyz="${x} ${y} ${z}" rpy="${roll} ${pitch} ${yaw}"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- Main kit macro that sensors.xacro will call -->
+  <xacro:macro name="sensor_kit_macro" params="parent x y z roll pitch yaw">
+    <xacro:property name="sensor_kit_base_link" value="sensor_kit_base_link"/>
+
+    <!-- Attach kit to parent -->
+    <joint name="${sensor_kit_base_link}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${sensor_kit_base_link}"/>
+      <origin xyz="${x} ${y} ${z}" rpy="${roll} ${pitch} ${yaw}"/>
+    </joint>
+    <link name="${sensor_kit_base_link}"/>
+
+    <!-- HESAI PANDAR64: macro is 'pandar64' and expects an <origin/> block -->
+    <xacro:pandar64 parent="${sensor_kit_base_link}" name="hesai_lidar"
+                    topic="/pandar_points" hz="10" gpu="$(arg gpu)">
+      <origin
+        xyz="${kit_calib['sensor_kit_base_link']['hesai_lidar']['x']}
+             ${kit_calib['sensor_kit_base_link']['hesai_lidar']['y']}
+             ${kit_calib['sensor_kit_base_link']['hesai_lidar']['z']}"
+        rpy="${kit_calib['sensor_kit_base_link']['hesai_lidar']['roll']}
+             ${kit_calib['sensor_kit_base_link']['hesai_lidar']['pitch']}
+             ${kit_calib['sensor_kit_base_link']['hesai_lidar']['yaw']}" />
+    </xacro:pandar64>
+
+    <!-- IMU: your macro signature requires explicit numeric params -->
+    <!-- Use name='imu' so the child becomes 'imu_link' -->
+    <xacro:imu_macro
+      name="imu"
+      parent="${sensor_kit_base_link}"
+      namespace=""
+      x="${kit_calib['sensor_kit_base_link']['imu_link']['x']}"
+      y="${kit_calib['sensor_kit_base_link']['imu_link']['y']}"
+      z="${kit_calib['sensor_kit_base_link']['imu_link']['z']}"
+      roll="${kit_calib['sensor_kit_base_link']['imu_link']['roll']}"
+      pitch="${kit_calib['sensor_kit_base_link']['imu_link']['pitch']}"
+      yaw="${kit_calib['sensor_kit_base_link']['imu_link']['yaw']}"
+      fps="100"/>
+      
+    <!-- FRONT CAMERA (Basler acA1920-40gc) -->
+    <xacro:camera_front_macro
+      name="camera_front"
+      parent="${sensor_kit_base_link}"
+      namespace=""
+      x="${kit_calib['sensor_kit_base_link']['camera_front']['x']}"
+      y="${kit_calib['sensor_kit_base_link']['camera_front']['y']}"
+      z="${kit_calib['sensor_kit_base_link']['camera_front']['z']}"
+      roll="${kit_calib['sensor_kit_base_link']['camera_front']['roll']}"
+      pitch="${kit_calib['sensor_kit_base_link']['camera_front']['pitch']}"
+      yaw="${kit_calib['sensor_kit_base_link']['camera_front']['yaw']}" />
+
+    <!-- GNSS antenna frame (ARP) – frame only -->
+    <xacro:frame_stub
+      name="gps"
+      parent="${sensor_kit_base_link}"
+      x="${kit_calib['sensor_kit_base_link']['gps']['x']}"
+      y="${kit_calib['sensor_kit_base_link']['gps']['y']}"
+      z="${kit_calib['sensor_kit_base_link']['gps']['z']}"
+      roll="${kit_calib['sensor_kit_base_link']['gps']['roll']}"
+      pitch="${kit_calib['sensor_kit_base_link']['gps']['pitch']}"
+      yaw="${kit_calib['sensor_kit_base_link']['gps']['yaw']}"/>
+  </xacro:macro>
+</robot>
