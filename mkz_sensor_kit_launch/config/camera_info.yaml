@@ -1,0 +1,22 @@
+image_width: 1920
+image_height: 1200
+camera_name: front_pass
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [1410.98208879208, 0.0, 996.72469160701, 0.0, 1523.29117493554, 619.97803038607,
+    0.0, 0.0, 1.0]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.177733984, 0.10086497033, 0.00022102915, -0.00294451839, 0.0]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [1317.94958496094, 0.0, 992.22957338068, 0.0, 0.0, 1481.79724121094, 620.65338690459,
+    0.0, 0.0, 0.0, 1.0, 0.0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
