@@ -1,0 +1,22 @@
+image_width: 1920
+image_height: 1200
+camera_name: front_driver
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [6818.18985044589, 0.0, 964.62213952214, 0.0, 7360.9915026601, 603.32534072115,
+    0.0, 0.0, 1.0]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0.40928147538, -14.59061159314, -0.00163502247, -0.0277972359, 0.0]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [6830.37939453125, 0.0, 952.78586191835, 0.0, 0.0, 7418.18798828125, 602.40884515071,
+    0.0, 0.0, 0.0, 1.0, 0.0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]

@@ -34,6 +34,14 @@ sensor_kit_base_link:
     roll: 0.0
     pitch: 0.0
     yaw: -1.5708
+    
+  camera_front_driver:
+    x: -0.01740005881108176
+    y: 0.2921
+    z: -0.01740005881108176
+    roll: 0.0
+    pitch: 0.0
+    yaw: -1.5708
   
   velodyne_left:
     x: 0.53

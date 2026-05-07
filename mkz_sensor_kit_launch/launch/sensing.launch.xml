@@ -21,6 +21,10 @@
          file="$(find-pkg-share mkz_sensor_kit_launch)/launch/yolox_camera0.launch.py">
     <arg name="input_image" value="/sensing/camera/camera0/image_rect_color"/>
   </include>
+  <include if="$(var use_yolox)"
+       file="$(find-pkg-share mkz_sensor_kit_launch)/launch/yolox_camera1.launch.py">
+  <arg name="input_image" value="/sensing/camera/camera1/image_rect_color"/>
+  </include>
 
   <!-- IMU (processing only; do not start NovAtel driver here) -->
   <include file="$(find-pkg-share mkz_sensor_kit_launch)/launch/imu.launch.xml">

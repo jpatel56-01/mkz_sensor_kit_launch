@@ -1,7 +1,7 @@
 /**:
   ros__parameters:
-    host_ip: 192.168.4.10
-    sensor_ip: 192.168.4.201
+    host_ip: 192.168.3.50
+    sensor_ip: 192.168.3.245
     data_port: 2368
     gnss_port: 2369
     packet_mtu_size: 1500

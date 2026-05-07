@@ -70,7 +70,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "param_file",
-                default_value=PathJoinSubstitution([pkg, "config", "pylon_FP_param.yaml"]),
+                default_value=PathJoinSubstitution([pkg, "config", "pylon_camera0_param.yaml"]),
                 description="Pylon driver params YAML (your calibrated config)",
             ),
             DeclareLaunchArgument(
