@@ -17,7 +17,7 @@ def generate_launch_description():
                 remappings=[
                     ("/sensing/tensorrt_yolox_camera1/in/image",
                      "/sensing/camera/camera1/image_rect_color"),
-                    ("/sensing/tensorrt_yolox/out/objects",
+                    ("/sensing/tensorrt_yolox_camera1/out/objects",
                      "/perception/object_recognition/detection/rois1"),
                 ],
                 parameters=[{

@@ -15,7 +15,7 @@
     #  The CameraInfo URL (Uniform Resource Locator) where the optional intrinsic
     #  camera calibration parameters are stored. This URL string will be parsed
     #  from the ROS-CameraInfoManager:
-    camera_info_url: "file:///home/mkz3/autoware_vehicle_ws/autoware_mkz_s/src/sensor_kit/mkz_sensor_kit_launch/mkz_sensor_kit_launch/config/camera_info.yaml"
+    camera_info_url: "file:///home/mkz3/autoware_vehicle_ws/autoware_mkz_s/src/sensor_kit/mkz_sensor_kit_launch/mkz_sensor_kit_launch/config/camera1_info.yaml"
 
     #  The encoding of the pixels -- channel meaning, ordering, size
     #  taken from the list of strings in include/sensor_msgs/image_encodings.h
